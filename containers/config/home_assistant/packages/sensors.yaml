@@ -1,0 +1,17 @@
+  - platform: integration
+    name: Grid Import Energy
+    source: sensor.grid_import_power
+    unit_time: h
+    method: left
+  - platform: integration
+    name: Grid Export Energy
+    source: sensor.grid_export_power
+    unit_time: h
+    method: left
+  # - platform: integration
+  #   name: Heat Pump Energy
+  #   source: sensor.heat_pump_power
+  #   unit_prefix: k
+  #   unit_time: h
+  #   method: left
+  #   round: 2

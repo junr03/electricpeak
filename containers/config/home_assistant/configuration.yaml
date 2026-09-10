@@ -1,0 +1,21 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Declarative configuration. Dashboards use Home Assistant's built-in Overview;
+# custom Lovelace resources, themes, and additional dashboards are intentionally
+# not enabled.
+sensor: !include packages/sensors.yaml
+template: !include packages/templates.yaml
+
+
+# Enable energy dashboard
+energy:
+
+# History configuration for real-time graphs
+history:
+  include:
+    entities:
+      - sensor.example_temperature
+      - sensor.example_power
+      - sensor.grid_import_energy
+      - sensor.grid_export_energy

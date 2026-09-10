@@ -1,0 +1,85 @@
+# All networking related services.
+services:
+  envoy:
+    container_name: envoy
+    image: envoyproxy/envoy:v1.35.3
+    environment:
+      - ENVOY_UID=0
+    networks:
+      - electricpeak
+    ports:
+      - 443:8081
+      - 8001:8001
+    volumes:
+      - /run/onepassword-secrets/envoyConfig:/etc/envoy/envoy.yaml:ro
+      - /var/lib/acme/example.invalid:/etc/ssl/electricpeak:ro
+    restart: unless-stopped
+
+  adguardhome:
+    container_name: adguardhome
+    image: adguard/adguardhome:latest
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-file: ${DOCKERLOGGING_MAXFILE}
+        max-size: ${DOCKERLOGGING_MAXSIZE}
+    environment:
+      - TZ=${TZ}
+      - UMASK=002
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/adguardhome/config:/opt/adguardhome/conf
+      - ${DOCKERCONFDIR}/adguardhome/work:/opt/adguardhome/work
+    networks:
+      - electricpeak
+    ports:
+      - 5080:80
+      - 5443:443/tcp
+      - 5443:443/udp
+      - 853:853/tcp
+      - 853:853/udp
+      - 53:53/tcp
+      - 53:53/udp
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ${DOCKERCONFDIR}/homeassistant/config:/config
+      - /run/onepassword-secrets/homeAssistantAutomations:/config/automations/example.yaml:ro
+      - /run/onepassword-secrets/homeAssistantTemplates:/config/packages/templates.yaml:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ports:
+      - 8123:8123
+
+  matter-server:
+    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    container_name: matter-server
+    restart: unless-stopped
+    # Put on host network to match Home Assistant.
+    network_mode: host
+    environment:
+      - LOG_LEVEL=debug
+    security_opt:
+      # Needed for Bluetooth via dbus
+      - apparmor:unconfined
+    volumes:
+      # Create an .env file that sets the USERDIR environment variable.
+      - ${DOCKERCONFDIR}/matter-server/data:/data/
+      # Required for Bluetooth via D-Bus
+      - /run/dbus:/run/dbus:ro
+
+networks:
+  electricpeak:
+    name: electricpeak
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: "2001:db8:1::/64"

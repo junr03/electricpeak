@@ -1,0 +1,168 @@
+# Auto-generated using compose2nix v0.3.2.
+{ pkgs, lib, ... }:
+
+{
+  # Runtime
+  virtualisation.docker = {
+    enable = true;
+    autoPrune.enable = true;
+  };
+  virtualisation.oci-containers.backend = "docker";
+
+  # Containers
+  virtualisation.oci-containers.containers."gluetun" = {
+    image = "qmcgaw/gluetun:v3.41.3";
+    environment = {
+      "PORT_FORWARD_ONLY" = "on";
+      "TZ" = "America/Los_Angeles";
+      "VPN_PORT_FORWARDING" = "on";
+      "VPN_PORT_FORWARDING_DOWN_COMMAND" = "/bin/sh -c 'wget -O- --retry-connrefused --post-data \"json={\\\"listen_port\\\":0,\\\"current_network_interface\\\":\\\"lo\\\"}\" http://127.0.0.1:8080/api/v2/app/setPreferences'";
+      "VPN_PORT_FORWARDING_UP_COMMAND" = "/bin/sh -c 'wget -O- --retry-connrefused --post-data \"json={\\\"listen_port\\\":{{PORT}},\\\"current_network_interface\\\":\\\"{{VPN_INTERFACE}}\\\",\\\"random_port\\\":false,\\\"upnp\\\":false}\" http://127.0.0.1:8080/api/v2/app/setPreferences'";
+      "VPN_SERVICE_PROVIDER" = "protonvpn";
+      "VPN_TYPE" = "wireguard";
+      "WIREGUARD_PRIVATE_KEY_SECRETFILE" = "/run/secrets/wireguard_private_key";
+    };
+    volumes = [
+      "/run/onepassword-secrets/gluetunEnvironment:/run/secrets/wireguard_private_key:ro"
+      "/var/lib/electricpeak/appdata/gluetun/config.toml:/gluetun/auth/config.toml:rw"
+    ];
+    ports = [
+      "8080:8080/tcp"
+      "6000:8000/tcp"
+      "6083:8083/tcp"
+      "9696:9696/tcp"
+      "5010:5010/tcp"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-add=NET_ADMIN"
+      "--network-alias=gluetun"
+      "--network=electricpeak"
+    ];
+  };
+  systemd.services."docker-gluetun" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."mousehole" = {
+    image = "tmmrtn/mousehole:latest";
+    environment = {
+      "MOUSEHOLE_HTTPS_ONLY_COOKIES" = "true";
+      "TZ" = "America/Los_Angeles";
+    };
+    volumes = [
+      "/var/lib/electricpeak/appdata/mousehole:/var/lib/mousehole:rw"
+    ];
+    dependsOn = [
+      "gluetun"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--network=container:gluetun"
+    ];
+  };
+  systemd.services."docker-mousehole" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."prowlarr" = {
+    image = "ghcr.io/hotio/prowlarr:latest";
+    environment = {
+      "PGID" = "100";
+      "PUID" = "1000";
+      "TZ" = "America/Los_Angeles";
+      "UMASK" = "002";
+    };
+    volumes = [
+      "/etc/localtime:/etc/localtime:ro"
+      "/mnt/data:/data:rw"
+      "/var/lib/electricpeak/appdata/prowlarr:/config:rw"
+    ];
+    dependsOn = [
+      "gluetun"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--network=container:gluetun"
+    ];
+  };
+  systemd.services."docker-prowlarr" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."qbittorrent" = {
+    image = "ghcr.io/hotio/qbittorrent:latest";
+    environment = {
+      "PGID" = "100";
+      "PUID" = "1000";
+      "TZ" = "America/Los_Angeles";
+      "UMASK" = "002";
+    };
+    volumes = [
+      "/etc/localtime:/etc/localtime:ro"
+      "/mnt/data/torrents:/data:rw"
+      "/var/lib/electricpeak/appdata/qbittorrent:/config:rw"
+    ];
+    dependsOn = [
+      "gluetun"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--network=container:gluetun"
+    ];
+  };
+  systemd.services."docker-qbittorrent" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+
+  # Root service
+  # When started, this will automatically create all resources and start
+  # the containers. When stopped, this will teardown all resources.
+  systemd.targets."docker-compose-electricpeak-root" = {
+    unitConfig = {
+      Description = "Root target generated by compose2nix.";
+    };
+    wantedBy = [ "multi-user.target" ];
+  };
+}

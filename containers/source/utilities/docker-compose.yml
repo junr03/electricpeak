@@ -1,0 +1,64 @@
+# Re-evaluate.
+services:
+  rawbackup:
+    image: python:3.13-alpine
+    container_name: rawbackup
+    command: python /app/server.py
+    volumes:
+      - /etc/nixos/containers/source/utilities/rawbackup/app:/app:ro
+      - /var/lib/rawbackup:/data:ro
+      - /var/lib/rawbackup/reconcile:/reconcile
+    networks:
+      - electricpeak
+    restart: unless-stopped
+
+  contact-sync:
+    # vdirsyncer 0.20.0 in the signed Vdirsyncer-DOCKERIZED 2.6.1 image.
+    image: bleala/vdirsyncer:2.6.1@sha256:cbe4a492453b597fdeef996a7e1555c8da9208307efb2ec1e4a059cda6123b3d
+    container_name: contact-sync
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - AUTODISCOVER=false
+      - AUTOSYNC=true
+      - AUTOUPDATE=false
+      - CRON_TIME=*/15 * * * *
+      - PRE_SYNC_SCRIPT_FILE=/vdirsyncer/require-enabled.sh
+    networks:
+      - electricpeak
+    volumes:
+      - ${DOCKERCONFDIR}/vdirsyncer:/vdirsyncer
+      - /run/onepassword-secrets/vdirsyncerGoogleClientId:/vdirsyncer/secrets/google-client-id:ro
+      - /run/onepassword-secrets/vdirsyncerGoogleClientSecret:/vdirsyncer/secrets/google-client-secret:ro
+      - /run/onepassword-secrets/vdirsyncerIcloudUsername:/vdirsyncer/secrets/icloud-username:ro
+      - /run/onepassword-secrets/vdirsyncerIcloudAppPassword:/vdirsyncer/secrets/icloud-app-password:ro
+
+  foodlog-sync:
+    image: ghcr.io/junr03/foodlog-sync:latest
+    container_name: foodlog-sync
+    user: "${PUID}:${PGID}"
+    command: ["--poll-interval", "900"]
+    environment:
+      - GOOGLE_DRIVE_FOLDER_ID_FILE=/run/secrets/google-drive-folder-id
+      - GOOGLE_DRIVE_TOKEN_FILE=/run/secrets/google-drive-token.json
+      - CRONOMETER_USERNAME_FILE=/run/secrets/cronometer-username
+      - CRONOMETER_PASSWORD_FILE=/run/secrets/cronometer-password
+      - CRONOMETER_SESSION_PATH=/data/cronometer-session.json
+      - CRONOMETER_ACCOUNT_TZ=${TZ}
+      - FOODLOG_DATABASE_PATH=/data/ledger.sqlite3
+      - FOODLOG_RAW_DIR=/data/raw
+      - FOODLOG_ENABLE_WRITES=false
+    volumes:
+      - ${DOCKERCONFDIR}/foodlog-sync:/data
+      - /run/onepassword-secrets/foodlogGoogleDriveFolderId:/run/secrets/google-drive-folder-id:ro
+      - /run/onepassword-secrets/foodlogGoogleDriveToken:/run/secrets/google-drive-token.json:ro
+      - /run/onepassword-secrets/foodlogCronometerUsername:/run/secrets/cronometer-username:ro
+      - /run/onepassword-secrets/foodlogCronometerPassword:/run/secrets/cronometer-password:ro
+    networks:
+      - electricpeak
+    restart: unless-stopped
+
+networks:
+  electricpeak:
+    name: electricpeak
+    external: true

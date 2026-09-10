@@ -1,0 +1,52 @@
+# Deployment-only NixOS settings.
+#
+# Copy this file to /etc/nixos/deployment.nix and keep the copy out of Git.
+# Store the deployment-specific values in a concealed 1Password field before
+# materializing this file on the server.
+{ lib, config, ... }:
+
+{
+  networking.hostName = "server";
+
+  # Replace these generic examples with the deployment's actual hardware.
+  fileSystems."/" = lib.mkForce {
+    device = "/dev/disk/by-label/NIXOS";
+    fsType = "ext4";
+  };
+  fileSystems."/boot" = lib.mkForce {
+    device = "/dev/disk/by-label/EFI";
+    fsType = "vfat";
+    options = [ "fmask=0077" "dmask=0077" ];
+  };
+
+  services.photoWorkflow.external = {
+    enable = true;
+    filesystemUuid = "replace-with-private-filesystem-uuid";
+  };
+
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "admin@example.invalid";
+    certs."example.invalid" = {
+      directory = "/var/lib/acme/public-certificate";
+      domain = "*.example.invalid";
+      extraDomainNames = [ "example.invalid" ];
+      dnsProvider = "cloudflare";
+      dnsResolver = "1.1.1.1:53";
+      extraLegoFlags = [
+        "--dns.propagation-wait"
+        "90s"
+      ];
+      environmentFile = config.services.onepassword-secrets.secretPaths.cloudflareDnsEnvironment;
+      group = "docker";
+      reloadServices = [ "docker-envoy.service" ];
+    };
+  };
+
+  # Keep the actual ACME renewal unit behind the OpNix secret service. Replace
+  # the example unit name when changing the certificate name above.
+  systemd.services."acme-order-renew-example.invalid" = {
+    after = [ "opnix-secrets.service" ];
+    requires = [ "opnix-secrets.service" ];
+  };
+}

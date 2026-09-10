@@ -1,0 +1,56 @@
+- trigger:
+    - platform: state
+      entity_id: sensor.example_cumulative_energy
+
+  sensor:
+    - name: "Grid import alternative"
+      unique_id: calculated_envoy_grid_import
+      unit_of_measurement: "Wh"
+      state: "{{ this.state | int(0) + ([0, (trigger.to_state.state | int(0) - trigger.from_state.state | int(0))] | max) }}"
+      device_class: energy
+      state_class: total_increasing
+    - name: "Grid export alternative"
+      unique_id: calculated_envoy_grid_export
+      unit_of_measurement: "Wh"
+      state: "{{ this.state | int(0) - ([0, (trigger.to_state.state | int(0) - trigger.from_state.state | int(0))] | min) }}"
+      device_class: energy
+      state_class: total_increasing
+- sensor:
+    - name: Grid Import Power
+      state_class: measurement
+      icon: mdi:transmission-tower
+      unit_of_measurement: kW
+      device_class: power
+      state: >
+        {{ [0, states('sensor.example_power_consumption') | int(0) - states('sensor.example_power_production') | int(0) ] | max }}
+    - name: Grid Export Power
+      state_class: measurement
+      icon: mdi:transmission-tower
+      unit_of_measurement: kW
+      device_class: power
+      state: >
+        {{ [0, states('sensor.example_power_production') | int(0) - states('sensor.example_power_consumption') | int(0)] | max }}
+    # - name: Heat Pump Power
+    #   unique_id: heat_pump_power
+    #   state_class: measurement
+    #   icon: mdi:heat-pump
+    #   unit_of_measurement: W
+    #   device_class: power
+    #   state: >
+    #     {{ states('sensor.your_heat_pump_power_sensor') | float(0) }}
+    # - name: Indoor Temperature
+    #   unique_id: indoor_temperature
+    #   state_class: measurement
+    #   icon: mdi:thermometer
+    #   unit_of_measurement: °F
+    #   device_class: temperature
+    #   state: >
+    #     {{ states('sensor.your_indoor_temperature_sensor') | float(0) }}
+    # - name: Outdoor Temperature
+    #   unique_id: outdoor_temperature
+    #   state_class: measurement
+    #   icon: mdi:thermometer
+    #   unit_of_measurement: °F
+    #   device_class: temperature
+    #   state: >
+    #     {{ states('weather.home') | attr('temperature') | float(0) if states('weather.home') != 'unavailable' else states('sensor.your_outdoor_temperature_sensor') | float(0) }}

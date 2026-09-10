@@ -1,0 +1,22 @@
+[general]
+status_path = "/vdirsyncer/status/"
+
+[pair google_icloud]
+a = "google"
+b = "icloud"
+# Replace both placeholders with the collection IDs printed by `discover`.
+collections = [["contacts", "default", "card"]]
+# Stop on concurrent edits instead of silently choosing one provider's copy.
+conflict_resolution = null
+
+[storage google]
+type = "google_contacts"
+token_file = "/vdirsyncer/google-contacts-token"
+client_id.fetch = ["command", "cat", "/vdirsyncer/secrets/google-client-id"]
+client_secret.fetch = ["command", "cat", "/vdirsyncer/secrets/google-client-secret"]
+
+[storage icloud]
+type = "carddav"
+url = "https://contacts.icloud.com/"
+username.fetch = ["command", "cat", "/vdirsyncer/secrets/icloud-username"]
+password.fetch = ["command", "cat", "/vdirsyncer/secrets/icloud-app-password"]

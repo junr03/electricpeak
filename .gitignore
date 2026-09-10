@@ -1,0 +1,5 @@
+# Production configuration is assembled only by the private deployment runner.
+/private-config/
+/deployment.nix
+/result
+/result-*

@@ -1,0 +1,183 @@
+# This compose file is used to deploy media-related containers on the Electricpeak server.
+services:
+  calibre:
+    image: lscr.io/linuxserver/calibre
+    container_name: calibre
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=002
+      - WEBUI_MODE=desktop
+    volumes:
+      - ${DOCKERCONFDIR}/calibre/config:/config
+      - ${DOCKERCONFDIR}/calibre/uploads:/uploads
+      - ${DOCKERCONFDIR}/calibre/plugins:/plugins
+      - ${DOCKERCONFDIR}/calibre/dedrm/:/dedrm
+      - ${DOCKERSTORAGEDIR}/library/books:/library
+      - ${DOCKERSTORAGEDIR}/torrents:/downloads
+      - ${DOCKERCONFDIR}/calibre/autoadd:/autoadd
+    networks:
+      - electricpeak
+    restart: unless-stopped
+
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web
+    container_name: calibreweb
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=002
+    volumes:
+      - ${DOCKERCONFDIR}/calibreweb:/config
+      - ${DOCKERSTORAGEDIR}/library/books:/library
+    restart: unless-stopped
+    depends_on:
+      - calibre
+    networks:
+      - electricpeak
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=002
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/audiobookshelf/config:/config
+      - ${DOCKERCONFDIR}/audiobookshelf/metadata:/metadata
+      - ${DOCKERSTORAGEDIR}/library/audiobooks:/audiobooks
+    networks:
+      - electricpeak
+
+  # Radarr - https://hotio.dev/containers/radarr/
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: ${DOCKERLOGGING_MAXFILE}
+        max-size: ${DOCKERLOGGING_MAXSIZE}
+    networks:
+      - electricpeak
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=002
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/radarr:/config
+      - ${DOCKERSTORAGEDIR}:/data
+
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    container_name: lazylibrarian
+    depends_on:
+      lazylibrarian-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: ${DOCKERLOGGING_MAXFILE}
+        max-size: ${DOCKERLOGGING_MAXSIZE}
+    networks:
+      - electricpeak
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=002
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/lazylibrarian:/config
+      - ${DOCKERSTORAGEDIR}:/data
+      - ${DOCKERSTORAGEDIR}/library/books:/books
+      # Calibre watches this directory and imports ebooks into its managed library.
+      - ${DOCKERCONFDIR}/calibre/autoadd:/calibre-autoadd
+
+  # Envoy terminates TLS, so LazyLibrarian must trust the forwarded protocol
+  # when it builds redirects. It also applies its 1Password-backed settings.
+  lazylibrarian-init:
+    image: alpine:3.20
+    container_name: lazylibrarian-init
+    restart: "no"
+    network_mode: none
+    command: ["/bin/sh", "/usr/local/bin/lazylibrarian-init"]
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${DOCKERCONFDIR}/lazylibrarian:/config
+      - /etc/electricpeak/lazylibrarian-init.sh:/usr/local/bin/lazylibrarian-init:ro
+      - /run/onepassword-secrets/lazylibrarianQbittorrentUser:/run/secrets/lazylibrarian-qbittorrent-user:ro
+      - /run/onepassword-secrets/lazylibrarianQbittorrentPass:/run/secrets/lazylibrarian-qbittorrent-pass:ro
+      - /run/onepassword-secrets/lazylibrarianTorznabUrl:/run/secrets/lazylibrarian-torznab-url:ro
+      - /run/onepassword-secrets/lazylibrarianTorznabApiKey:/run/secrets/lazylibrarian-torznab-api-key:ro
+      - /run/onepassword-secrets/lazylibrarianGoodreadsRssUrl:/run/secrets/lazylibrarian-goodreads-rss-url:ro
+
+  # Sonarr - https://hotio.dev/containers/sonarr/
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr:release
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: ${DOCKERLOGGING_MAXFILE}
+        max-size: ${DOCKERLOGGING_MAXSIZE}
+    networks:
+      - electricpeak
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/sonarr:/config
+      - ${DOCKERSTORAGEDIR}:/data
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    networks:
+      - electricpeak
+    volumes:
+      - ${DOCKERCONFDIR}/plex:/config
+      - ${DOCKERSTORAGEDIR}/library/tv:/tv
+      - ${DOCKERSTORAGEDIR}/library/movies:/movies
+    restart: 'unless-stopped'
+    group_add:
+      - '303'
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+
+  homarr:
+    image: ghcr.io/homarr-labs/homarr:latest
+    container_name: homarr
+    restart: unless-stopped
+    env_file:
+      - ../../config/homarr/environment
+    environment:
+      - TZ=${TZ}
+    volumes:
+      # Homarr's Docker integration uses the local Docker API socket.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKERCONFDIR}/homarr:/appdata
+      - /run/onepassword-secrets/homarrSecretEncryptionKey:/appdata/secret-encryption-key:ro
+    networks:
+      - electricpeak
+
+networks:
+  electricpeak:
+    name: electricpeak
+    external: true

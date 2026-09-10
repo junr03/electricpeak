@@ -1,0 +1,5 @@
+# Homarr deployment settings. Homarr's boards and integrations are stored in
+# its persistent SQLite database under /appdata rather than in YAML files.
+# BASE_URL is supplied at runtime from the 1Password homarr-environment field.
+DOCKER_SOCKET_PATHS=/var/run/docker.sock
+SECRET_ENCRYPTION_KEY_FILE=/appdata/secret-encryption-key
