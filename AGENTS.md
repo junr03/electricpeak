@@ -21,6 +21,12 @@ with the existing Nix modules.
 
 - Keep flake inputs pinned. Change `flake.nix` and use `nix flake update` when
   updating dependencies; do not edit `flake.lock` by hand.
+- This is a public repository. Put production hostnames, private IP addresses,
+  hardware/filesystem identifiers, Home Assistant entity or device IDs, and
+  other deployment-specific values in `junr03/electricpeak-sensitive`.
+- Never add a `private-config` tree, submodule, or production deployment
+  workflow here. Public CI must not receive production credentials or connect
+  to the private network or server.
 - Keep secrets out of source files. Add non-secret `op://` references to
   `modules/onepassword-secrets/default.nix`; never put resolved values or
   service-account tokens in Nix expressions, Compose files, or the repository.
@@ -35,12 +41,13 @@ Use these checks before opening a PR when applicable:
 
 ```bash
 nix flake check --no-build
-sudo nixos-rebuild build --flake .#electricpeak
+python3 scripts/check-public-boundary.py --history
+nix develop .#public --command gitleaks git --redact --no-banner .
 ```
 
-The PR workflow also validates Home Assistant YAML, regenerates Compose Nix
-modules, and builds the configuration on the server. A deployment occurs only
-from `main`.
+The public PR workflow also validates example Home Assistant YAML and generated
+Compose Nix modules. Production builds and deployments run only from the
+private `electricpeak-sensitive` repository.
 
 ## GitHub operations
 

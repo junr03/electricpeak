@@ -9,7 +9,19 @@ passwords, API keys, and tokens are supplied by 1Password at runtime.
 ```sh
 nix flake check --no-build
 nix develop .#rust --command cargo test --manifest-path rust/Cargo.toml --workspace --locked
+python3 scripts/check-public-boundary.py --history
+nix develop .#public --command gitleaks git --redact --no-banner .
 ```
+
+Install the repository's pre-push protection once in each clone:
+
+```sh
+./scripts/install-public-hooks.sh
+```
+
+The hook rejects private topology, hardware and Home Assistant identifiers,
+production hostnames, credential-shaped files, and detected secrets. Put those
+changes in the private `junr03/electricpeak-sensitive` repository instead.
 
 `electricpeak-public` is an evaluation-only example. Never activate it on a
 production machine. `nixos-rebuild test` activates a configuration for the

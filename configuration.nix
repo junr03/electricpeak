@@ -128,7 +128,7 @@ in
       security.polkit.enable = true;
 
       environment.systemPackages = with pkgs; [
-        self.packages.${pkgs.system}.codex
+        self.packages.${pkgs.stdenv.hostPlatform.system}.codex
         compose2nix
         curl
         git

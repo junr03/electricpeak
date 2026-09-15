@@ -400,6 +400,13 @@ in
     homarr.environmentFiles = [ secretPaths.homarrEnvironment ];
   };
 
+  # Docker creates a missing bind-mount source as root. Pre-create the
+  # foodlog state directory for the UID and GID configured in Compose so the
+  # service can persist its SQLite ledger, raw imports, and session data.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/electricpeak/appdata/foodlog-sync 0750 1000 100 - -"
+  ];
+
   environment.systemPackages = [ bootstrap configEditor ghcrLogin pkgs._1password-cli ]
     ++ lib.optional hasCertificates acmeCertificateHealthCheck;
 
@@ -421,6 +428,7 @@ in
       "docker-foodlog-sync" = {
         after = [ "foodlog-sync-ghcr-login.service" ];
         requires = [ "foodlog-sync-ghcr-login.service" ];
+        unitConfig.RequiresMountsFor = [ "/var/lib/electricpeak/appdata/foodlog-sync" ];
       };
       "foodlog-sync-ghcr-login" = {
         after = [ "docker.service" "network-online.target" ];

@@ -33,17 +33,32 @@ in
   programs = {
     git = {
       enable = true;
-      userName = "José Ulises Niño Rivera";
-      userEmail = "junr03@users.noreply.github.com";
+      settings.user = {
+        name = "José Ulises Niño Rivera";
+        email = "junr03@users.noreply.github.com";
+      };
     };
 
     ssh = {
       enable = true;
-      matchBlocks = {
+      enableDefaultConfig = false;
+      settings = {
+        "*" = {
+          ForwardAgent = false;
+          AddKeysToAgent = "no";
+          Compression = false;
+          ServerAliveInterval = 0;
+          ServerAliveCountMax = 3;
+          HashKnownHosts = false;
+          UserKnownHostsFile = "~/.ssh/known_hosts";
+          ControlMaster = "no";
+          ControlPath = "~/.ssh/master-%r@%n:%p";
+          ControlPersist = "no";
+        };
         "github.com" = {
-          user = "git";
-          hostname = "github.com";
-          identityFile = "~/.ssh/github";
+          User = "git";
+          HostName = "github.com";
+          IdentityFile = "~/.ssh/github";
         };
       };
     };

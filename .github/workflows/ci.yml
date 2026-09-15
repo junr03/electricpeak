@@ -10,6 +10,25 @@ permissions:
   contents: read
 
 jobs:
+  public-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+      - name: Reject private deployment content
+        run: |
+          python3 -m unittest discover -s scripts/tests
+          python3 scripts/check-public-boundary.py --history
+      - name: Scan Git history for credentials
+        run: nix develop .#public --command gitleaks git --redact --no-banner .
+      - name: Lint policy workflow and hooks
+        run: |
+          nix develop .#public --command actionlint
+          nix develop .#public --command shellcheck .githooks/pre-push scripts/install-public-hooks.sh
+
   validate-home-assistant:
     runs-on: ubuntu-latest
     steps:

@@ -3,3 +3,5 @@
 /deployment.nix
 /result
 /result-*
+__pycache__/
+*.pyc
