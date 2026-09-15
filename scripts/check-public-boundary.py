@@ -68,6 +68,21 @@ CONTENT_RULES = (
     ),
 )
 
+PR_JOB_FORBIDDEN = (
+    (re.compile(r"\$\{\{\s*secrets\."), "references GitHub secrets"),
+    (re.compile(r"(?m)^\s{4}environment\s*:"), "declares a protected environment"),
+    (re.compile(r"repository\s*:\s*junr03/electricpeak-sensitive"), "checks out private configuration"),
+    (re.compile(r"tailscale/github-action"), "connects to the private network"),
+)
+
+DEPLOY_JOB_REQUIREMENTS = (
+    "github.repository == 'junr03/electricpeak'",
+    "github.ref == 'refs/heads/main'",
+    "environment: production",
+    "repository: junr03/electricpeak-sensitive",
+    "token: ${{ secrets.PAT_ELECTRICPEAK }}",
+)
+
 
 def git(*args: str, input_text: str | None = None) -> bytes:
     return subprocess.check_output(
@@ -128,6 +143,51 @@ def private_ipv4s(text: str) -> set[str]:
     return findings
 
 
+def workflow_jobs(text: str) -> dict[str, str]:
+    """Extract top-level job sections from the deliberately simple CI YAML."""
+    jobs: dict[str, list[str]] = {}
+    current: str | None = None
+    in_jobs = False
+    for line in text.splitlines(keepends=True):
+        if line == "jobs:\n" or line == "jobs:\r\n":
+            in_jobs = True
+            continue
+        if not in_jobs:
+            continue
+        match = re.match(r"^  ([A-Za-z0-9_-]+):\s*(?:#.*)?$", line.rstrip("\r\n"))
+        if match:
+            current = match.group(1)
+            jobs[current] = [line]
+        elif line and not line[0].isspace():
+            break
+        elif current is not None:
+            jobs[current].append(line)
+    return {name: "".join(lines) for name, lines in jobs.items()}
+
+
+def inspect_ci_workflow(revision: str, text: str) -> list[str]:
+    failures: list[str] = []
+    jobs = workflow_jobs(text)
+    for name, section in jobs.items():
+        location = f"{revision[:12]}:.github/workflows/ci.yml:{name}"
+        if not re.search(r"(?m)^    runs-on:\s*ubuntu-latest\s*$", section):
+            failures.append(f"{location}: public workflow jobs must run on ubuntu-latest")
+        if name == "deploy-production":
+            for requirement in DEPLOY_JOB_REQUIREMENTS:
+                if requirement not in section:
+                    failures.append(
+                        f"{location}: production deployment is missing guard {requirement!r}"
+                    )
+            continue
+        for pattern, description in PR_JOB_FORBIDDEN:
+            if pattern.search(section):
+                failures.append(
+                    f"{location}: pull-request-capable job {description}; "
+                    "only deploy-production may cross the private boundary"
+                )
+    return failures
+
+
 def inspect_revision(revision: str) -> list[str]:
     failures: list[str] = []
     for mode, kind, path in tree_entries(revision):
@@ -154,6 +214,8 @@ def inspect_revision(revision: str) -> list[str]:
         text = read_blob(revision, path)
         if text is None:
             continue
+        if path == ".github/workflows/ci.yml":
+            failures.extend(inspect_ci_workflow(revision, text))
         for rule in CONTENT_RULES:
             for match in rule.pattern.finditer(text):
                 line = text.count("\n", 0, match.start()) + 1

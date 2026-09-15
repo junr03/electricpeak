@@ -100,6 +100,36 @@ class PublicBoundaryTests(unittest.TestCase):
         )
         self.assertTrue(any("private key material" in failure for failure in failures))
 
+    def test_pull_request_job_must_not_cross_private_boundary(self):
+        failures = self.inspect(
+            {
+                ".github/workflows/ci.yml": """\
+jobs:
+  public-checks:
+    runs-on: [self-hosted, Linux, X64]
+    environment: production
+    steps:
+      - run: echo ${{ secrets.SSH_PRIVATE_KEY }}
+"""
+            }
+        )
+        self.assertTrue(any("must run on ubuntu-latest" in failure for failure in failures))
+        self.assertTrue(any("references GitHub secrets" in failure for failure in failures))
+        self.assertTrue(any("declares a protected environment" in failure for failure in failures))
+
+    def test_deploy_job_requires_main_repository_guards(self):
+        failures = self.inspect(
+            {
+                ".github/workflows/ci.yml": """\
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+"""
+            }
+        )
+        self.assertTrue(any("missing guard" in failure for failure in failures))
+
 
 if __name__ == "__main__":
     unittest.main()
