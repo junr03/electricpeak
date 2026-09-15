@@ -1,8 +1,9 @@
 # Electricpeak NixOS configuration
 
 Reusable NixOS and Home Manager modules for a server running containers and a
-photo backup workflow. Deployment configuration and production CI are private;
-passwords, API keys, and tokens are supplied by 1Password at runtime.
+photo backup workflow. Deployment-specific configuration remains private;
+passwords, API keys, and tokens are supplied by GitHub environments or
+1Password at runtime.
 
 ## Public checks
 
@@ -24,14 +25,15 @@ production hostnames, credential-shaped files, and detected secrets. Put those
 changes in the private `junr03/electricpeak-sensitive` repository instead.
 
 `electricpeak-public` is an evaluation-only example. Never activate it on a
-production machine. `nixos-rebuild test` activates a configuration for the
-current boot; use `build` when you only want validation.
+production machine. The production target exists only after the private
+configuration has been assembled at `private-config/`.
 
 ## Production configuration
 
-The private deployment runner checks out an exact public commit and an exact
-private configuration commit, placing the latter at `private-config/`. This
-directory is ignored and is never committed to this repository. The production
+After all GitHub-hosted checks pass, a push to protected `main` checks out the
+tip of `junr03/electricpeak-sensitive` at `private-config/`, builds the exact
+assembled source on the server, and activates that build. The private directory
+is ignored and is never committed to this repository. The production
 `electricpeak` flake target is available only when that configuration exists.
 Use a path flake so Nix includes the separately assembled private directory:
 
@@ -40,9 +42,10 @@ nix flake check --no-build path:.
 nixos-rebuild build --flake path:.#electricpeak
 ```
 
-Production builds, SSH access, activation, and their logs run in the private
-deployment repository. Public CI has no production credentials or private
-configuration. Publishing or renaming this repository does not activate NixOS.
+Pull-request jobs run only on GitHub-hosted runners and never declare the
+`production` environment, check out the private repository, or receive
+deployment credentials. Only the main-only deploy job can use that environment.
+Manual runs default to build-only; select `activate` to perform a manual switch.
 
 ## Layout
 

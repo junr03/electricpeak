@@ -24,9 +24,11 @@ with the existing Nix modules.
 - This is a public repository. Put production hostnames, private IP addresses,
   hardware/filesystem identifiers, Home Assistant entity or device IDs, and
   other deployment-specific values in `junr03/electricpeak-sensitive`.
-- Never add a `private-config` tree, submodule, or production deployment
-  workflow here. Public CI must not receive production credentials or connect
-  to the private network or server.
+- Never commit a `private-config` tree or submodule. The reviewed main-only
+  deployment job may assemble `electricpeak-sensitive` into that ignored path.
+- Pull-request jobs must run on GitHub-hosted runners and must not declare the
+  `production` environment, receive production credentials, check out private
+  configuration, or connect to the private network or server.
 - Keep secrets out of source files. Add non-secret `op://` references to
   `modules/onepassword-secrets/default.nix`; never put resolved values or
   service-account tokens in Nix expressions, Compose files, or the repository.
@@ -46,8 +48,9 @@ nix develop .#public --command gitleaks git --redact --no-banner .
 ```
 
 The public PR workflow also validates example Home Assistant YAML and generated
-Compose Nix modules. Production builds and deployments run only from the
-private `electricpeak-sensitive` repository.
+Compose Nix modules. After those checks pass, pushes to protected `main` deploy
+the assembled public and private configuration through the `production`
+environment.
 
 ## GitHub operations
 

@@ -6,8 +6,9 @@
 # the private configuration explicitly.
 
 {
-  self,
   config,
+  gallatinRunners,
+  self,
   lib,
   pkgs,
   requirePrivateSystemConfiguration ? false,
@@ -33,6 +34,7 @@ in
   imports = [
     ./modules/onepassword-secrets/default.nix
     ./modules/photo-workflow/default.nix
+    gallatinRunners.nixosModules.github-actions-runner
     ./containers/source/utilities/rawbackup/status.nix
     ./containers/source/media/docker-compose.nix
     ./containers/source/networking/docker-compose.nix

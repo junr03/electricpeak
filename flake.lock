@@ -74,6 +74,28 @@
         "type": "github"
       }
     },
+    "gallatinRunners": {
+      "inputs": {
+        "nix-darwin": "nix-darwin",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "dir": "runners",
+        "lastModified": 1789424857,
+        "narHash": "sha256-qHML7gFnWAZCKVnwehasJBxx+FjH4pUC2sI1RL3kB9Y=",
+        "owner": "junr03",
+        "repo": "gallatin",
+        "rev": "e6ca46f2fe0c02a396142ffbfd1864f517453b85",
+        "type": "github"
+      },
+      "original": {
+        "dir": "runners",
+        "owner": "junr03",
+        "repo": "gallatin",
+        "rev": "e6ca46f2fe0c02a396142ffbfd1864f517453b85",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -94,7 +116,44 @@
         "type": "github"
       }
     },
+    "nix-darwin": {
+      "inputs": {
+        "nixpkgs": [
+          "gallatinRunners",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786845137,
+        "narHash": "sha256-oQFip+v0luP8NIxJzmiW4Wu8bILsbFWom5l0zonl8hQ=",
+        "owner": "LnL7",
+        "repo": "nix-darwin",
+        "rev": "4cff07de74b50e64bdd68cd4e722ab5b6b35ee48",
+        "type": "github"
+      },
+      "original": {
+        "owner": "LnL7",
+        "repo": "nix-darwin",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
+      "locked": {
+        "lastModified": 1789006805,
+        "narHash": "sha256-xB8mKMOx1IA9vTDNLmJZ6n4wCMq/cuWBBOzGCRnqxrU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-zerotier": {
       "locked": {
         "lastModified": 1788531059,
         "narHash": "sha256-hLD4l3QOGBQhkVp3mQ2lJ/YbEi99qUgKapb40KovZ88=",
@@ -110,7 +169,7 @@
         "type": "github"
       }
     },
-    "nixpkgs-zerotier": {
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1788531059,
         "narHash": "sha256-hLD4l3QOGBQhkVp3mQ2lJ/YbEi99qUgKapb40KovZ88=",
@@ -151,8 +210,9 @@
       "inputs": {
         "codex-cli-nix": "codex-cli-nix",
         "gallatin": "gallatin",
+        "gallatinRunners": "gallatinRunners",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "nixpkgs-zerotier": "nixpkgs-zerotier",
         "opnix": "opnix"
       }
