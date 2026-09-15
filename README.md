@@ -46,6 +46,9 @@ Pull-request jobs run only on GitHub-hosted runners and never declare the
 `production` environment, check out the private repository, or receive
 deployment credentials. Only the main-only deploy job can use that environment.
 Manual runs default to build-only; select `activate` to perform a manual switch.
+Private revision identifiers are masked before checkout. Build, activation,
+journal, and runtime-verification output remain in server-local deployment logs
+and are never copied into the public GitHub Actions log.
 
 Configure these as environment secrets on `production`, not as repository
 secrets:

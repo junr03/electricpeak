@@ -96,18 +96,28 @@ jobs:
           persist-credentials: false
           submodules: false
 
+      - name: Resolve and mask private revision
+        id: private
+        env:
+          GH_TOKEN: ${{ secrets.PAT_ELECTRICPEAK }}
+        run: |
+          response=$(curl --fail --silent --show-error --location \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/junr03/electricpeak-sensitive/commits/main)
+          revision=$(jq -er '.sha | select(test("^[0-9a-f]{40}$"))' <<< "$response")
+          echo "::add-mask::$revision"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
       - name: Check out private configuration
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: junr03/electricpeak-sensitive
-          ref: main
+          ref: ${{ steps.private.outputs.revision }}
           token: ${{ secrets.PAT_ELECTRICPEAK }}
           path: private-config
           persist-credentials: false
-
-      - name: Record private revision
-        id: private
-        run: echo "revision=$(git -C private-config rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Connect to the private network
         uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2

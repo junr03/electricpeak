@@ -67,11 +67,16 @@ elif ".active-system" in cmd: print("/nix/store/candidate-nixos-system-test")
         self.assertIn("test -L '/tmp/electricpeak-deploy.test123/source/result' && rm", calls)
         self.assertNotIn("systemd-run", calls)
         self.assertIn("container IDs are unchanged", result.stdout)
+        self.assertIn("build.log' 2>&1", calls)
+        self.assertNotIn("candidate-nixos-system", result.stdout)
+        self.assertNotIn("b" * 40, result.stdout)
 
     def test_failed_build_never_activates(self):
         result, calls = self.run_controller(fail_build=True, activate=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("systemd-run", calls)
+        self.assertIn("private diagnostics", result.stderr)
+        self.assertIn("diagnostics retained", result.stdout)
 
     def test_invalid_revision_never_connects(self):
         result, calls = self.run_controller(bad_revision=True)
@@ -88,6 +93,10 @@ elif ".active-system" in cmd: print("/nix/store/candidate-nixos-system-test")
         )
         self.assertIn(".active-system", calls)
         self.assertIn("verify-deployment-runtime.sh", calls)
+        self.assertIn("launch.log' 2>&1", calls)
+        self.assertIn("runtime-verification.log' 2>&1", calls)
+        self.assertNotIn("candidate-nixos-system", result.stdout)
+        self.assertNotIn("b" * 40, result.stdout)
 
 
 if __name__ == "__main__":
