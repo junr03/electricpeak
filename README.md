@@ -47,6 +47,22 @@ Pull-request jobs run only on GitHub-hosted runners and never declare the
 deployment credentials. Only the main-only deploy job can use that environment.
 Manual runs default to build-only; select `activate` to perform a manual switch.
 
+Configure these as environment secrets on `production`, not as repository
+secrets:
+
+- `PAT_ELECTRICPEAK`: fine-grained token restricted to read-only Contents access
+  on `junr03/electricpeak-sensitive`.
+- `SERVER_USER`: the server account allowed to perform the bounded deployment.
+- `SSH_PRIVATE_KEY`: that account's private deployment key.
+- `SERVER_SSH_KNOWN_HOSTS`: a pinned `known_hosts` entry for the server; do not
+  generate it with `ssh-keyscan` during CI.
+- `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`: Tailscale OAuth credentials allowed
+  to create a tagged ephemeral CI node.
+- `TS_SERVER_HOST`: the server's Tailscale hostname or address.
+
+The environment must permit deployments only from `main`. Runtime application
+secrets remain in 1Password and are never copied into GitHub.
+
 ## Layout
 
 - `configuration.nix`, `modules/`, and `users/`: NixOS and Home Manager modules.
