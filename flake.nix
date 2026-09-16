@@ -13,9 +13,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gallatin = {
-      url = "github:junr03/gallatin?ref=main";
+      url = "github:junr03/gallatin?rev=e6ca46f2fe0c02a396142ffbfd1864f517453b85";
       flake = false;
     };
+    gallatinRunners.url = "github:junr03/gallatin?dir=runners&rev=e6ca46f2fe0c02a396142ffbfd1864f517453b85";
     codex-cli-nix = {
       url = "github:sadjow/codex-cli-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -48,6 +49,7 @@
           specialArgs = {
             inherit self zerotierPkgs requirePrivateSystemConfiguration;
             gallatin = inputs.gallatin;
+            gallatinRunners = inputs.gallatinRunners;
           };
           modules = [
             ./configuration.nix
@@ -91,13 +93,24 @@
         '';
       };
 
-      devShells.${system}.rust = pkgs.mkShell {
-        packages = with pkgs; [
-          cargo
-          clippy
-          rustc
-          rustfmt
-        ];
+      devShells.${system} = {
+        rust = pkgs.mkShell {
+          packages = with pkgs; [
+            cargo
+            clippy
+            rustc
+            rustfmt
+          ];
+        };
+
+        public = pkgs.mkShell {
+          packages = with pkgs; [
+            actionlint
+            gitleaks
+            python3
+            shellcheck
+          ];
+        };
       };
     };
 }

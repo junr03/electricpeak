@@ -5,11 +5,39 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      activate:
+        description: Activate the built configuration (leave off for a build-only cutover check)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  public-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+      - name: Reject private deployment content
+        run: |
+          python3 -m unittest discover -s scripts/tests
+          python3 scripts/check-public-boundary.py --history
+      - name: Scan Git history for credentials
+        run: nix develop .#public --command gitleaks git --redact --no-banner .
+      - name: Lint policy workflow and hooks
+        run: |
+          nix develop .#public --command actionlint
+          nix develop .#public --command shellcheck \
+            .githooks/pre-push \
+            .github/scripts/deploy-public-source.sh \
+            scripts/install-public-hooks.sh
+
   validate-home-assistant:
     runs-on: ubuntu-latest
     steps:
@@ -44,3 +72,77 @@ jobs:
           nix build .#checks.x86_64-linux.rawbackup-status-collector .#checks.x86_64-linux.rawbackup-api-contract
       - name: Test photo workflow
         run: python3 -m unittest discover -s modules/photo-workflow/tests
+
+  deploy-production:
+    name: Deploy production
+    if: >-
+      github.repository == 'junr03/electricpeak' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs:
+      - public-boundary
+      - validate-home-assistant
+      - public-checks
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    concurrency:
+      group: electricpeak-production
+      cancel-in-progress: false
+    steps:
+      - name: Check out public configuration
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          submodules: false
+
+      - name: Resolve and mask private revision
+        id: private
+        env:
+          GH_TOKEN: ${{ secrets.PAT_ELECTRICPEAK }}
+        run: |
+          response=$(curl --fail --silent --show-error --location \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/junr03/electricpeak-sensitive/commits/main)
+          revision=$(jq -er '.sha | select(test("^[0-9a-f]{40}$"))' <<< "$response")
+          echo "::add-mask::$revision"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Check out private configuration
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: junr03/electricpeak-sensitive
+          ref: ${{ steps.private.outputs.revision }}
+          token: ${{ secrets.PAT_ELECTRICPEAK }}
+          path: private-config
+          persist-credentials: false
+
+      - name: Connect to the private network
+        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/electricpeak"
+          chmod 600 "$HOME/.ssh/electricpeak"
+          printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Build and deploy the exact assembled configuration
+        env:
+          ACTIVATE: ${{ github.event_name == 'push' || inputs.activate }}
+          DEPLOYMENT_UNIT: electricpeak-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+          PRIVATE_REVISION: ${{ steps.private.outputs.revision }}
+          PUBLIC_REVISION: ${{ github.sha }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          TS_SERVER_HOST: ${{ secrets.TS_SERVER_HOST }}
+        run: bash .github/scripts/deploy-public-source.sh . private-config

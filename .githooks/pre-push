@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+python3 "$repo_root/scripts/check-public-boundary.py" --pre-push
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+gitleaks is required before pushing this public repository.
+Enter the pinned environment with `nix develop .#public`, then retry the push.
+EOF
+  exit 1
+fi
+
+gitleaks git --redact --no-banner "$repo_root"
