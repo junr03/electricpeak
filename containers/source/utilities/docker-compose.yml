@@ -37,7 +37,7 @@ services:
     image: ghcr.io/junr03/foodlog-sync:latest
     container_name: foodlog-sync
     user: "${PUID}:${PGID}"
-    command: ["--poll-interval", "900"]
+    command: ["--write", "--poll-interval", "900"]
     environment:
       - GOOGLE_DRIVE_FOLDER_ID_FILE=/run/secrets/google-drive-folder-id
       - GOOGLE_DRIVE_TOKEN_FILE=/run/secrets/google-drive-token.json
@@ -47,7 +47,7 @@ services:
       - CRONOMETER_ACCOUNT_TZ=${TZ}
       - FOODLOG_DATABASE_PATH=/data/ledger.sqlite3
       - FOODLOG_RAW_DIR=/data/raw
-      - FOODLOG_ENABLE_WRITES=false
+      - FOODLOG_ENABLE_WRITES=true
     volumes:
       - ${DOCKERCONFDIR}/foodlog-sync:/data
       - /run/onepassword-secrets/foodlogGoogleDriveFolderId:/run/secrets/google-drive-folder-id:ro
