@@ -1,0 +1,224 @@
+name: Commit generated Compose modules
+
+on:
+  workflow_run:
+    workflows: ["Public configuration checks"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  commit-generated:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
+    outputs:
+      branch: ${{ steps.commit.outputs.branch }}
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - name: Download generated Compose modules
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: generated-compose-nix
+          path: generated
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+
+      - name: Commit generated modules to the pull request
+        id: commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = await import("node:fs/promises");
+            const path = await import("node:path");
+
+            const run = context.payload.workflow_run;
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            const association = (run.pull_requests ?? []).find(
+              pull => pull.number && pull.head?.ref === run.head_branch && pull.head?.sha
+            );
+
+            core.setOutput("changed", "false");
+            if (!association) {
+              core.notice("No same-repository pull request is associated with this workflow run.");
+              return;
+            }
+
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: association.number,
+            });
+            if (
+              pull.state !== "open" ||
+              pull.base.ref !== "main" ||
+              pull.base.repo?.full_name !== repository ||
+              pull.head.repo?.full_name !== repository ||
+              pull.head.ref === "main" ||
+              pull.head.ref !== run.head_branch ||
+              pull.head.sha !== association.head.sha
+            ) {
+              core.notice("The pull request is closed, is from a fork, or has advanced since generation.");
+              return;
+            }
+
+            const root = path.resolve("generated");
+            const rootInfo = await fs.lstat(root);
+            if (!rootInfo.isDirectory()) {
+              throw new Error("Downloaded artifact root is not a directory.");
+            }
+
+            const files = [];
+            let totalBytes = 0;
+            let markerSeen = false;
+            async function collect(directory) {
+              for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+                const filename = path.join(directory, entry.name);
+                if (entry.isDirectory()) {
+                  await collect(filename);
+                  continue;
+                }
+                if (!entry.isFile()) {
+                  throw new Error("The artifact contains a symlink or special file.");
+                }
+                const relative = path.relative(root, filename).split(path.sep).join("/");
+                if (relative === "artifact-root.txt") {
+                  const marker = await fs.readFile(filename);
+                  if (marker.length !== 0) {
+                    throw new Error("The artifact root marker must be empty.");
+                  }
+                  markerSeen = true;
+                  continue;
+                }
+                if (!/^containers\/source\/[A-Za-z0-9][A-Za-z0-9_.-]*\/docker-compose\.nix$/.test(relative)) {
+                  throw new Error(`Unexpected generated artifact path: ${relative}`);
+                }
+
+                const bytes = await fs.readFile(filename);
+                if (bytes.length > 1024 * 1024) {
+                  throw new Error(`Generated module is too large: ${relative}`);
+                }
+                totalBytes += bytes.length;
+                if (totalBytes > 20 * 1024 * 1024 || files.length >= 100) {
+                  throw new Error("Generated artifact exceeds the allowed size or file count.");
+                }
+                const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+                files.push({ path: relative, bytes, content });
+              }
+            }
+            await collect(root);
+            if (!markerSeen) {
+              throw new Error("The generated artifact root marker is missing.");
+            }
+
+            if (!files.length) {
+              core.notice("No generated Compose modules were present in the artifact.");
+              return;
+            }
+
+            const { data: baseCommit } = await github.rest.git.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: pull.head.sha,
+            });
+            const { data: currentTree } = await github.rest.git.getTree({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tree_sha: baseCommit.tree.sha,
+              recursive: "true",
+            });
+            if (currentTree.truncated) {
+              throw new Error("Could not inspect the complete pull request tree.");
+            }
+
+            const existing = new Map(
+              currentTree.tree
+                .filter(entry => entry.type === "blob")
+                .map(entry => [entry.path, entry.sha])
+            );
+            const { createHash } = await import("node:crypto");
+            const changes = [];
+            for (const file of files) {
+              const blobSha = createHash("sha1")
+                .update(`blob ${file.bytes.length}\0`)
+                .update(file.bytes)
+                .digest("hex");
+              if (existing.get(file.path) !== blobSha) {
+                changes.push({
+                  path: file.path,
+                  mode: "100644",
+                  type: "blob",
+                  content: file.content,
+                });
+              }
+            }
+
+            if (!changes.length) {
+              core.notice("Generated Compose modules are already current.");
+              return;
+            }
+
+            const { data: tree } = await github.rest.git.createTree({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base_tree: baseCommit.tree.sha,
+              tree: changes,
+            });
+            const { data: commit } = await github.rest.git.createCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              message: "chore: generate Compose Nix modules",
+              tree: tree.sha,
+              parents: [pull.head.sha],
+            });
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${pull.head.ref}`,
+              sha: commit.sha,
+              force: false,
+            });
+
+            core.setOutput("branch", pull.head.ref);
+            core.setOutput("changed", "true");
+            core.notice(`Committed ${changes.length} generated Compose module(s).`);
+
+  revalidate-pull-request:
+    needs: commit-generated
+    if: needs.commit-generated.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run checks on the generated commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_BRANCH: ${{ needs.commit-generated.outputs.branch }}
+        with:
+          script: |
+            const branch = process.env.PR_BRANCH;
+            if (
+              !branch ||
+              branch.includes(String.fromCharCode(10)) ||
+              branch.includes(String.fromCharCode(13))
+            ) {
+              throw new Error("Missing or invalid pull request branch.");
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "ci.yml",
+              ref: branch,
+              inputs: { activate: "false" },
+            });
+            core.notice("Dispatched public configuration checks for the generated commit.");
