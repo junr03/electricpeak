@@ -199,7 +199,7 @@ def inspect_ci_workflow(
     return failures
 
 
-def inspect_revision(revision: str) -> list[str]:
+def inspect_revision(revision: str, *, inspect_all_workflows: bool = False) -> list[str]:
     failures: list[str] = []
     for mode, kind, path in tree_entries(revision):
         parts = path.split("/")
@@ -225,7 +225,11 @@ def inspect_revision(revision: str) -> list[str]:
         text = read_blob(revision, path)
         if text is None:
             continue
-        if path.startswith(".github/workflows/") and path.endswith((".yml", ".yaml")):
+        if path == ".github/workflows/ci.yml" or (
+            inspect_all_workflows
+            and path.startswith(".github/workflows/")
+            and path.endswith((".yml", ".yaml"))
+        ):
             failures.extend(
                 inspect_ci_workflow(
                     revision,
@@ -272,9 +276,12 @@ def main() -> int:
         revisions = args.revisions or ["HEAD"]
 
     failures: list[str] = []
+    current_head = git("rev-parse", "--verify", "HEAD^{commit}").decode().strip()
     for revision in revisions:
         resolved = git("rev-parse", "--verify", f"{revision}^{{commit}}").decode().strip()
-        failures.extend(inspect_revision(resolved))
+        failures.extend(
+            inspect_revision(resolved, inspect_all_workflows=resolved == current_head)
+        )
 
     if failures:
         print("Public-boundary check failed:\n", file=sys.stderr)
