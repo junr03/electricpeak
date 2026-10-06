@@ -277,8 +277,13 @@ def main() -> int:
 
     failures: list[str] = []
     current_head = git("rev-parse", "--verify", "HEAD^{commit}").decode().strip()
-    for revision in revisions:
-        resolved = git("rev-parse", "--verify", f"{revision}^{{commit}}").decode().strip()
+    resolved_revisions = [
+        git("rev-parse", "--verify", f"{revision}^{{commit}}").decode().strip()
+        for revision in revisions
+    ]
+    if current_head not in resolved_revisions:
+        resolved_revisions.append(current_head)
+    for resolved in resolved_revisions:
         failures.extend(
             inspect_revision(resolved, inspect_all_workflows=resolved == current_head)
         )
@@ -294,7 +299,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"Public-boundary check passed for {len(revisions)} commit(s).")
+    print(f"Public-boundary check passed for {len(resolved_revisions)} commit(s).")
     return 0
 
 
