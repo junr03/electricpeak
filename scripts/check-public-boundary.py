@@ -165,14 +165,25 @@ def workflow_jobs(text: str) -> dict[str, str]:
     return {name: "".join(lines) for name, lines in jobs.items()}
 
 
-def inspect_ci_workflow(revision: str, text: str) -> list[str]:
+def inspect_ci_workflow(
+    revision: str,
+    workflow_path: str,
+    text: str,
+    *,
+    allow_production_deploy: bool,
+) -> list[str]:
     failures: list[str] = []
     jobs = workflow_jobs(text)
     for name, section in jobs.items():
-        location = f"{revision[:12]}:.github/workflows/ci.yml:{name}"
+        location = f"{revision[:12]}:{workflow_path}:{name}"
         if not re.search(r"(?m)^    runs-on:\s*ubuntu-latest\s*$", section):
             failures.append(f"{location}: public workflow jobs must run on ubuntu-latest")
         if name == "deploy-production":
+            if not allow_production_deploy:
+                failures.append(
+                    f"{location}: only .github/workflows/ci.yml may deploy production"
+                )
+                continue
             for requirement in DEPLOY_JOB_REQUIREMENTS:
                 if requirement not in section:
                     failures.append(
@@ -188,7 +199,7 @@ def inspect_ci_workflow(revision: str, text: str) -> list[str]:
     return failures
 
 
-def inspect_revision(revision: str) -> list[str]:
+def inspect_revision(revision: str, *, inspect_all_workflows: bool = False) -> list[str]:
     failures: list[str] = []
     for mode, kind, path in tree_entries(revision):
         parts = path.split("/")
@@ -214,8 +225,19 @@ def inspect_revision(revision: str) -> list[str]:
         text = read_blob(revision, path)
         if text is None:
             continue
-        if path == ".github/workflows/ci.yml":
-            failures.extend(inspect_ci_workflow(revision, text))
+        if path == ".github/workflows/ci.yml" or (
+            inspect_all_workflows
+            and path.startswith(".github/workflows/")
+            and path.endswith((".yml", ".yaml"))
+        ):
+            failures.extend(
+                inspect_ci_workflow(
+                    revision,
+                    path,
+                    text,
+                    allow_production_deploy=path == ".github/workflows/ci.yml",
+                )
+            )
         for rule in CONTENT_RULES:
             for match in rule.pattern.finditer(text):
                 line = text.count("\n", 0, match.start()) + 1
@@ -230,6 +252,15 @@ def inspect_revision(revision: str) -> list[str]:
                 f"{revision[:12]}:{path}:{line}: private IPv4 address {address}; "
                 "use a documentation address publicly or move the value to electricpeak-sensitive"
             )
+    return failures
+
+
+def inspect_revisions(revisions: list[str], current_head: str) -> list[str]:
+    failures: list[str] = []
+    for revision in revisions:
+        failures.extend(
+            inspect_revision(revision, inspect_all_workflows=revision == current_head)
+        )
     return failures
 
 
@@ -254,9 +285,14 @@ def main() -> int:
         revisions = args.revisions or ["HEAD"]
 
     failures: list[str] = []
-    for revision in revisions:
-        resolved = git("rev-parse", "--verify", f"{revision}^{{commit}}").decode().strip()
-        failures.extend(inspect_revision(resolved))
+    current_head = git("rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+    resolved_revisions = [
+        git("rev-parse", "--verify", f"{revision}^{{commit}}").decode().strip()
+        for revision in revisions
+    ]
+    if current_head not in resolved_revisions:
+        resolved_revisions.append(current_head)
+    failures.extend(inspect_revisions(resolved_revisions, current_head))
 
     if failures:
         print("Public-boundary check failed:\n", file=sys.stderr)
@@ -269,7 +305,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"Public-boundary check passed for {len(revisions)} commit(s).")
+    print(f"Public-boundary check passed for {len(resolved_revisions)} commit(s).")
     return 0
 
 

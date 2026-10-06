@@ -54,16 +54,46 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
+      - name: Check out pull request head for Compose generation
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-head
+          persist-credentials: false
+          submodules: false
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+      - name: Generate Compose modules
+        run: |
+          checkout_root=.
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            (cd pr-head && ./containers/generate-docker-modules.sh)
+            checkout_root=pr-head
+          else
+            ./containers/generate-docker-modules.sh
+          fi
+          rm -rf generated-compose-artifact
+          mkdir -p generated-compose-artifact
+          (cd "$checkout_root" && find containers/source -type f -name docker-compose.nix \
+            -exec cp --parents {} "$GITHUB_WORKSPACE/generated-compose-artifact/" ';')
+          touch generated-compose-artifact/artifact-root.txt
+      - name: Upload generated Compose modules for pull requests
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: generated-compose-nix
+          path: |
+            generated-compose-artifact/artifact-root.txt
+            generated-compose-artifact/containers/source/**/docker-compose.nix
+          if-no-files-found: error
+      - name: Check committed Compose modules are current
+        if: github.event_name != 'pull_request'
+        run: git diff --exit-code -- containers/source/
       - name: Evaluate public configuration
         run: |
           test ! -e private-config/configuration.nix
           nix flake check --no-build
           nix eval .#nixosConfigurations.electricpeak-public.config.networking.hostName
-      - name: Check generated Compose modules
-        run: |
-          ./containers/generate-docker-modules.sh
-          git diff --exit-code -- containers/source/
       - name: Check Rust and API contract
         run: |
           nix develop .#rust --command cargo fmt --manifest-path rust/Cargo.toml --all -- --check

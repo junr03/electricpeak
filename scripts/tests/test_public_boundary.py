@@ -117,6 +117,46 @@ jobs:
         self.assertTrue(any("references GitHub secrets" in failure for failure in failures))
         self.assertTrue(any("declares a protected environment" in failure for failure in failures))
 
+
+    def test_current_revision_scans_all_workflows_but_history_keeps_ci_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            historical = self.commit(
+                root,
+                {
+                    ".github/workflows/deploy.yml": """\\
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo deployment
+"""
+                },
+            )
+            current = self.commit(root, {"README.md": "Current revision.\\n"})
+
+            previous = Path.cwd()
+            try:
+                import os
+
+                os.chdir(root)
+                historical_failures = MODULE.inspect_revisions([historical], current)
+                current_failures = MODULE.inspect_revisions([historical, current], current)
+            finally:
+                os.chdir(previous)
+
+            self.assertEqual(historical_failures, [])
+            self.assertTrue(
+                any(
+                    f"{current[:12]}:.github/workflows/deploy.yml:deploy-production"
+                    in failure
+                    and "only .github/workflows/ci.yml may deploy production" in failure
+                    for failure in current_failures
+                ),
+                current_failures,
+            )
+
     def test_deploy_job_requires_main_repository_guards(self):
         failures = self.inspect(
             {
