@@ -55,7 +55,7 @@
       "CRONOMETER_SESSION_PATH" = "/data/cronometer-session.json";
       "CRONOMETER_USERNAME_FILE" = "/run/secrets/cronometer-username";
       "FOODLOG_DATABASE_PATH" = "/data/ledger.sqlite3";
-      "FOODLOG_ENABLE_WRITES" = "false";
+      "FOODLOG_ENABLE_WRITES" = "true";
       "FOODLOG_RAW_DIR" = "/data/raw";
       "GOOGLE_DRIVE_FOLDER_ID_FILE" = "/run/secrets/google-drive-folder-id";
       "GOOGLE_DRIVE_TOKEN_FILE" = "/run/secrets/google-drive-token.json";
@@ -67,7 +67,7 @@
       "/run/onepassword-secrets/foodlogGoogleDriveToken:/run/secrets/google-drive-token.json:ro"
       "/var/lib/electricpeak/appdata/foodlog-sync:/data:rw"
     ];
-    cmd = [ "--poll-interval" "900" ];
+    cmd = [ "--write" "--poll-interval" "900" ];
     user = "1000:100";
     log-driver = "journald";
     extraOptions = [
