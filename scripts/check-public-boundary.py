@@ -255,6 +255,15 @@ def inspect_revision(revision: str, *, inspect_all_workflows: bool = False) -> l
     return failures
 
 
+
+def inspect_revisions(revisions: list[str], current_head: str) -> list[str]:
+    failures: list[str] = []
+    for revision in revisions:
+        failures.extend(
+            inspect_revision(revision, inspect_all_workflows=revision == current_head)
+        )
+    return failures
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group()
@@ -283,10 +292,7 @@ def main() -> int:
     ]
     if current_head not in resolved_revisions:
         resolved_revisions.append(current_head)
-    for resolved in resolved_revisions:
-        failures.extend(
-            inspect_revision(resolved, inspect_all_workflows=resolved == current_head)
-        )
+    failures.extend(inspect_revisions(resolved_revisions, current_head))
 
     if failures:
         print("Public-boundary check failed:\n", file=sys.stderr)
