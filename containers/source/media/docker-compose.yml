@@ -103,6 +103,11 @@ services:
       - ${DOCKERSTORAGEDIR}/library/books:/books
       # Calibre watches this directory and imports ebooks into its managed library.
       - ${DOCKERCONFDIR}/calibre/autoadd:/calibre-autoadd
+      - /etc/electricpeak/gam7:/opt/gam7:ro
+      - /etc/electricpeak/kindle-gmail-send.py:/usr/local/bin/kindle-gmail-send:ro
+      - /run/onepassword-secrets/kindleGamOAuth2ServiceJson:/run/secrets/kindle-gam-oauth2service.json:ro
+      - /run/onepassword-secrets/kindleFromEmail:/run/secrets/kindle-from-email:ro
+      - /run/onepassword-secrets/kindleToEmail:/run/secrets/kindle-to-email:ro
 
   # Envoy terminates TLS, so LazyLibrarian must trust the forwarded protocol
   # when it builds redirects. It also applies its 1Password-backed settings.
