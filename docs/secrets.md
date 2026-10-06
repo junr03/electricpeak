@@ -51,6 +51,7 @@ names:
 | `home-assistant-templates.yaml` | Home Assistant templates |
 | `homarr-environment.env` | Homarr environment file |
 | `junr03-authorized-keys.txt` | `junr03` SSH authorized keys |
+| `kindle-gam-oauth2service.json` | GAM7 service-account credential for Gmail API send-only access |
 
 The remaining references are scalar fields and must not contain newlines:
 
@@ -63,6 +64,8 @@ lazylibrarian-qbittorrent-pass
 lazylibrarian-qbittorrent-user
 lazylibrarian-torznab-api-key
 lazylibrarian-torznab-url
+kindle-from-email
+kindle-to-email
 foodlog-ghcr-token
 foodlog-ghcr-username
 foodlog-google-drive-folder-id
