@@ -165,14 +165,25 @@ def workflow_jobs(text: str) -> dict[str, str]:
     return {name: "".join(lines) for name, lines in jobs.items()}
 
 
-def inspect_ci_workflow(revision: str, text: str) -> list[str]:
+def inspect_ci_workflow(
+    revision: str,
+    workflow_path: str,
+    text: str,
+    *,
+    allow_production_deploy: bool,
+) -> list[str]:
     failures: list[str] = []
     jobs = workflow_jobs(text)
     for name, section in jobs.items():
-        location = f"{revision[:12]}:.github/workflows/ci.yml:{name}"
+        location = f"{revision[:12]}:{workflow_path}:{name}"
         if not re.search(r"(?m)^    runs-on:\s*ubuntu-latest\s*$", section):
             failures.append(f"{location}: public workflow jobs must run on ubuntu-latest")
         if name == "deploy-production":
+            if not allow_production_deploy:
+                failures.append(
+                    f"{location}: only .github/workflows/ci.yml may deploy production"
+                )
+                continue
             for requirement in DEPLOY_JOB_REQUIREMENTS:
                 if requirement not in section:
                     failures.append(
@@ -214,8 +225,15 @@ def inspect_revision(revision: str) -> list[str]:
         text = read_blob(revision, path)
         if text is None:
             continue
-        if path == ".github/workflows/ci.yml":
-            failures.extend(inspect_ci_workflow(revision, text))
+        if path.startswith(".github/workflows/") and path.endswith((".yml", ".yaml")):
+            failures.extend(
+                inspect_ci_workflow(
+                    revision,
+                    path,
+                    text,
+                    allow_production_deploy=path == ".github/workflows/ci.yml",
+                )
+            )
         for rule in CONTENT_RULES:
             for match in rule.pattern.finditer(text):
                 line = text.count("\n", 0, match.start()) + 1
