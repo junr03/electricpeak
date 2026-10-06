@@ -255,7 +255,6 @@ def inspect_revision(revision: str, *, inspect_all_workflows: bool = False) -> l
     return failures
 
 
-
 def inspect_revisions(revisions: list[str], current_head: str) -> list[str]:
     failures: list[str] = []
     for revision in revisions:
@@ -263,6 +262,7 @@ def inspect_revisions(revisions: list[str], current_head: str) -> list[str]:
             inspect_revision(revision, inspect_all_workflows=revision == current_head)
         )
     return failures
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
