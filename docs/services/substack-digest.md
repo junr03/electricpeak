@@ -52,6 +52,27 @@ article page breaks, and a linked contents page. These dimensions derive from
 PDF text remains selectable; the tablet can annotate it normally. The CI
 `move-sample-pdf` artifact lets you inspect the layout on your own device.
 
+## Public and private configuration
+
+The Rust service, container, reusable Nix module, PDF layout, example defaults,
+and offline test fixtures belong in this public repository. The `op://`
+references name secrets but do not contain their values.
+
+Keep deployment activation (`services.substackDigest.enable = true`) and
+personal configuration overrides in `electricpeak-sensitive`, assembled as
+`private-config/` during deployment. The public defaults disclose the 04:00
+America/Los_Angeles schedule and `/Substack Daily` folder; these are non-secret
+preferences, not account identifiers. The private module can override the
+calendar and the Home Manager config source if different or private values
+are needed. Do not add a private Git submodule to this repository.
+
+Neither Git repository should contain browser cookies, reMarkable tokens,
+subscription exports, downloaded articles, or generated digests. Credentials
+belong in 1Password; delivery history, pending uploads, PDFs, and uploader
+cache remain in `/var/lib/substack-digest` and any protected server backups.
+Public CI uses only fictional article fixtures and never receives account
+credentials. See [Secrets and private configuration](../secrets.md).
+
 ## One-time setup
 
 Do this on a trusted workstation. Do not paste credentials into chat or git.
