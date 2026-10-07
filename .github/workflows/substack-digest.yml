@@ -1,7 +1,8 @@
-name: Substack digest
+name: Test Substack digest (no account access)
 on:
   pull_request:
     paths:
+      - rust/**
       - containers/source/utilities/substack-digest/**
       - containers/config/substack-digest/**
       - .github/workflows/substack-digest.yml
@@ -16,10 +17,8 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
-      - name: Test checkpoints and subscription filtering
-        run: python3 -m unittest discover -s containers/source/utilities/substack-digest -v
       - name: Build pinned container
-        run: docker build -t substack-digest:test containers/source/utilities/substack-digest
+        run: docker build -t substack-digest:test -f containers/source/utilities/substack-digest/Dockerfile .
       - name: Render fixture with production restrictions
         run: |
           mkdir -p "$RUNNER_TEMP/digest-output"
@@ -27,10 +26,13 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges:true --shm-size 256m \
             --tmpfs /tmp:size=512m,mode=1777 \
-            -v "$PWD/containers/source/utilities/substack-digest:/tests:ro" \
             -v "$PWD/containers/config/substack-digest:/config:ro" \
             -v "$RUNNER_TEMP/digest-output:/output" \
-            --entrypoint python3 substack-digest:test /tests/smoke_test.py
+            substack-digest:test --smoke-test /output/sample.pdf
+      - name: Check PDF dimensions and text
+        run: |
+          sudo apt-get update && sudo apt-get install -y poppler-utils
+          bash containers/source/utilities/substack-digest/check-sample.sh "$RUNNER_TEMP/digest-output/sample.pdf"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: move-sample-pdf

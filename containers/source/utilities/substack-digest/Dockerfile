@@ -1,16 +1,22 @@
-# Reuse the OSS project's locked Playwright, Chromium, requests and pypdf.
-FROM node:22.16.0-bookworm-slim@sha256:1471ea646673136b8308550ac14b36d847ffb21c24bc31828279e443c924e488 AS uploader
-WORKDIR /opt/uploader
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+FROM rust:1.98.0-bookworm@sha256:4e4a7e7939c17991ab35f2b8c2e67593980f771d28f6b1254b1850f860fd0c7f AS builder
+WORKDIR /build
+COPY rust ./rust
+COPY containers/config/substack-digest/config.json ./containers/config/substack-digest/config.json
+RUN cargo build --release --locked --manifest-path rust/Cargo.toml -p substack-digest \
+    && cargo test --locked --manifest-path rust/Cargo.toml -p substack-digest
 
-FROM ghcr.io/jwoglom/remarkable-substack/remarkable-substack:v0.3.9@sha256:3111cc496453c105136adb8f67e9afcfdb2c996e62559ab3ee3e99463f35d11b
+# Chromium and Node from the official browser image; no Python service runtime.
+FROM mcr.microsoft.com/playwright:v1.55.0-noble@sha256:ffc33305f7b4b04057ae4a0caa70aad4fde87454fb403a1a22e7f931707dfcf9
 USER root
-COPY --from=uploader /usr/local/bin/node /usr/local/bin/node
-COPY --from=uploader /opt/uploader /opt/uploader
-RUN ln -s /opt/uploader/node_modules/.bin/rmapi-js /usr/local/bin/rmapi-js && rmapi-js --version
-COPY digest.py /app/digest.py
-ENV RMAPI_CONFIG_DIR=/data/rmapi NO_COLOR=1 PYTHONDONTWRITEBYTECODE=1
+WORKDIR /opt/uploader
+COPY containers/source/utilities/substack-digest/package.json containers/source/utilities/substack-digest/package-lock.json ./
+RUN npm ci --ignore-scripts --omit=dev --no-audit --no-fund \
+    && ln -s /opt/uploader/node_modules/.bin/rmapi-js /usr/local/bin/rmapi-js \
+    && rmapi-js --version \
+    && browser="$(find /ms-playwright -type f -name chrome -print -quit)" \
+    && test -n "$browser" && ln -s "$browser" /usr/local/bin/chromium
+COPY --from=builder /build/rust/target/release/substack-digest /usr/local/bin/substack-digest
+ENV RMAPI_CONFIG_DIR=/data/rmapi NO_COLOR=1 HOME=/tmp
 USER 1000:100
-ENTRYPOINT ["python3", "-u", "/app/digest.py"]
+ENTRYPOINT ["substack-digest"]
 CMD ["--config", "/config/config.json"]

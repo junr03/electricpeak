@@ -1,7 +1,14 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.substackDigest;
-  source = builtins.path { path = ../../containers/source/utilities/substack-digest; name = "substack-digest"; };
+  # Build context contains the Rust workspace and only the required container
+  # inputs. No private deployment configuration enters the image build.
+  source = pkgs.runCommand "substack-digest-source" { } ''
+    mkdir -p $out/containers/source/utilities/substack-digest $out/containers/config/substack-digest
+    cp -r ${pkgs.lib.cleanSource ../../rust} $out/rust
+    cp -r ${../../containers/source/utilities/substack-digest}/. $out/containers/source/utilities/substack-digest/
+    cp ${../../containers/config/substack-digest/config.json} $out/containers/config/substack-digest/config.json
+  '';
   # A content-addressed tag prevents a stale local build after changing sources.
   imageTag = "electricpeak-substack-digest:${builtins.substring 0 16 (builtins.hashString "sha256" (toString source))}";
 in
@@ -43,7 +50,7 @@ in
       path = [ pkgs.docker ];
       script = ''
         if ! docker image inspect ${lib.escapeShellArg imageTag} >/dev/null 2>&1; then
-          docker build --tag ${lib.escapeShellArg imageTag} ${source}
+          docker build --file ${source}/containers/source/utilities/substack-digest/Dockerfile --tag ${lib.escapeShellArg imageTag} ${source}
         fi
         docker tag ${lib.escapeShellArg imageTag} electricpeak-substack-digest:local
       '';

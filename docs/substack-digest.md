@@ -14,13 +14,14 @@ or other services during deployment.
 
 ## Implementation and scope
 
-- Reuses [remarkable-substack](https://github.com/jwoglom/remarkable-substack)'s
-  pinned container for Playwright/Chromium, plus the pinned
-  [rmapi-js](https://github.com/jwoglom/rmapi-js) v12 client and npm integrity lock.
-  Its published v0.3.9 image still has the older Go uploader, so our Dockerfile
-  adds the current JS client instead of invoking the upstream sync application.
-- Small Python orchestration handles subscription selection, time windows,
-  page layout and the durable upload outbox. No custom PDF engine or cloud protocol.
+- The custom service is Rust, in `rust/crates/substack-digest`, with dependencies
+  pinned in the workspace Cargo lockfile. It uses `reqwest` for authenticated
+  collection and the OSS `headless_chrome` Rust library to drive Chromium.
+- The container builds the Rust binary and reuses the official Playwright
+  browser image for Chromium. The pinned [rmapi-js](https://github.com/jwoglom/rmapi-js)
+  v12 CLI handles reMarkable Cloud. Node runs that existing OSS client; there is
+  no custom Python service or Python runtime dependency. Small embedded JavaScript
+  expressions extract the browser DOM; orchestration and state live in Rust.
 - Fetches authenticated `/api/v1/subscriptions?tvOnly=false`, intersects actual
   subscription IDs with publication metadata, then paginates each archive.
   Never reads the reader/recommendation feed. No fixed article-count limit.
@@ -56,15 +57,15 @@ PDF text remains selectable; the tablet can annotate it normally. The CI
 Do this on a trusted workstation. Do not paste credentials into chat or git.
 
 1. Capture an authenticated Substack browser session with Playwright's local
-   browser UI (`playwright codegen --save-storage=/secure/path/substack.json
-   https://substack.com`). Install Playwright and Chromium on that workstation
+   browser UI (`npx --package=playwright@1.55.0 playwright codegen
+   --save-storage=/secure/path/substack.json https://substack.com`). Install the Playwright Chromium browser on that workstation
    if needed. Log in normally, then visit and open a paid article at **each
    custom-domain publication** while that browser is open; their login cookies
    may have a separate domain. Close the browser to write the storage file.
    The worker accepts this storage-state JSON or a Playwright cookie array.
    Protect it with mode 0600. The worker never logs or commits cookies.
 2. Build the container from the repository:
-   `docker build -t electricpeak-substack-digest:local containers/source/utilities/substack-digest`.
+   `docker build -t electricpeak-substack-digest:local -f containers/source/utilities/substack-digest/Dockerfile .`.
    Register the OSS uploader once with an eight-letter code from
    [reMarkable's connection page](https://my.remarkable.com/device/browser/connect).
    Use a private directory owned by UID 1000 for the mounted config:
@@ -99,7 +100,7 @@ Do this on a trusted workstation. Do not paste credentials into chat or git.
    Substack session and reMarkable device token.
 
 The build unit builds from the immutable Nix-store source with digest-pinned
-base images and `npm ci`. It caches a source-specific tag and tags that image
+base images, `cargo build --locked`, and `npm ci`. It caches a source-specific tag and tags that image
 for the Compose service. It requires registry access on the first start after
 an implementation change, and publishes no container ports. Runtime has no
 Docker socket, runs as UID 1000, drops capabilities and uses a read-only root.
@@ -116,7 +117,8 @@ Docker socket, runs as UID 1000, drops capabilities and uses a read-only root.
 Home Manager mirrors the config using the existing `onChange` pattern. Each
 run reads it again. Changing the calendar also requires changing `timezone`
 in JSON if you want the filenames to use a different local date.
-Back up the state directory: losing it loses delivery history. Local PDFs are
+The Rust service reads the original checkpoint/outbox JSON format, so upgrading
+preserves delivery history and resumes any pending upload. Back up the state directory: losing it loses delivery history. Local PDFs are
 removed after 30 days on a successful run; cloud PDFs and annotations are
 retained indefinitely. Do not edit/delete state while a job is running.
 
@@ -135,14 +137,16 @@ or "mark read" operation is sent to Substack or reMarkable.
 ## Validation
 
 ```sh
-python3 -m unittest discover -s containers/source/utilities/substack-digest -v
-docker build -t substack-digest:test containers/source/utilities/substack-digest
+nix develop .#rust --command cargo test --manifest-path rust/Cargo.toml -p substack-digest --locked
+docker build -t substack-digest:test -f containers/source/utilities/substack-digest/Dockerfile .
 nix flake check --no-build
 python3 scripts/check-public-boundary.py --history
 nix develop .#public --command gitleaks git --redact --no-banner .
 ```
 
-The separate Substack workflow renders an offline fixture in the production
+The separate Substack workflow only validates the service; daily delivery runs
+on Electricpeak through systemd. It runs Rust unit tests and renders an offline
+fixture in the production
 container restrictions, verifies PDF dimensions/text and paywall handling,
 and attaches the sample PDF. The normal Compose CI generates the Nix container
 module; do not hand-edit or commit the generated file for this change.
