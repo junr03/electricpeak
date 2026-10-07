@@ -117,6 +117,36 @@
       "docker-compose-electricpeak-root.target"
     ];
   };
+  virtualisation.oci-containers.containers."substack-digest" = {
+    image = "electricpeak-substack-digest:local";
+    environment = {
+      "RMAPI_CONFIG_DIR" = "/data/rmapi";
+    };
+    volumes = [
+      "/run/onepassword-secrets/substackDigestCookies:/run/secrets/substack-cookies.json:ro"
+      "/run/onepassword-secrets/substackDigestRemarkableToken:/run/secrets/remarkable-token:ro"
+      "/var/lib/electricpeak/appdata/substack-digest:/config:ro"
+      "/var/lib/substack-digest:/data:rw"
+    ];
+    labels = {
+      "compose2nix.settings.autoStart" = "false";
+    };
+    user = "1000:100";
+    log-driver = "journald";
+    autoStart = false;
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--network-alias=substack-digest"
+      "--network=electricpeak"
+      "--security-opt=no-new-privileges:true"
+      "--shm-size=268435456"
+    ];
+  };
+  systemd.services."docker-substack-digest" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "no";
+    };
+  };
 
   # Root service
   # When started, this will automatically create all resources and start
