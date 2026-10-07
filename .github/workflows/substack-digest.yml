@@ -1,0 +1,37 @@
+name: Substack digest
+on:
+  pull_request:
+    paths:
+      - containers/source/utilities/substack-digest/**
+      - containers/config/substack-digest/**
+      - .github/workflows/substack-digest.yml
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Test checkpoints and subscription filtering
+        run: python3 -m unittest discover -s containers/source/utilities/substack-digest -v
+      - name: Build pinned container
+        run: docker build -t substack-digest:test containers/source/utilities/substack-digest
+      - name: Render fixture with production restrictions
+        run: |
+          mkdir -p "$RUNNER_TEMP/digest-output"
+          chmod 777 "$RUNNER_TEMP/digest-output"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true --shm-size 256m \
+            --tmpfs /tmp:size=512m,mode=1777 \
+            -v "$PWD/containers/source/utilities/substack-digest:/tests:ro" \
+            -v "$PWD/containers/config/substack-digest:/config:ro" \
+            -v "$RUNNER_TEMP/digest-output:/output" \
+            --entrypoint python3 substack-digest:test /tests/smoke_test.py
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: move-sample-pdf
+          path: ${{ runner.temp }}/digest-output/sample.pdf

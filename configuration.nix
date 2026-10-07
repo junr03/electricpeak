@@ -33,6 +33,7 @@ in
 {
   imports = [
     ./modules/onepassword-secrets/default.nix
+    ./modules/substack-digest/default.nix
     ./modules/photo-workflow/default.nix
     gallatinRunners.nixosModules.github-actions-runner
     ./containers/source/utilities/rawbackup/status.nix
