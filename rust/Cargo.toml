@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rawbackup-status"]
+members = ["crates/rawbackup-status", "crates/substack-digest"]
 resolver = "2"
 
 [workspace.package]

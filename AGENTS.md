@@ -4,6 +4,12 @@ This repository is the NixOS and Home Manager configuration for the
 `electricpeak` home server. Keep changes small, reproducible, and consistent
 with the existing Nix modules.
 
+## Service implementation
+
+- Build new custom services in Rust, using the existing Rust workspace when
+  appropriate. Use Python only when there is a concrete technical reason, and
+  document that reason. Reuse existing OSS tools instead of rewriting them.
+
 ## Container definitions
 
 - Edit the source Docker Compose YAML files under

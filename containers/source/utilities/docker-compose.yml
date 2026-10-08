@@ -1,5 +1,29 @@
 # Re-evaluate.
 services:
+  substack-digest:
+    # Built from pinned OSS dependencies by substack-digest-build.service.
+    image: electricpeak-substack-digest:local
+    container_name: substack-digest
+    user: "1000:100"
+    restart: "no"
+    labels:
+      - "compose2nix.settings.autoStart=false"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    shm_size: "256m"
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    environment:
+      - RMAPI_CONFIG_DIR=/data/rmapi
+    volumes:
+      - /var/lib/substack-digest:/data
+      - ${DOCKERCONFDIR}/substack-digest:/config:ro
+      - /run/onepassword-secrets/substackDigestCookies:/run/secrets/substack-cookies.json:ro
+      - /run/onepassword-secrets/substackDigestRemarkableToken:/run/secrets/remarkable-token:ro
+    networks:
+      - electricpeak
+
   rawbackup:
     image: python:3.13-alpine
     container_name: rawbackup

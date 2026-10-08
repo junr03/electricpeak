@@ -11,7 +11,9 @@ let
     "acme-order-renew-${name}"
   ]) (lib.attrNames config.security.acme.certs);
   tailscaledDependency = lib.optional config.services.tailscale.enable "tailscaled.service";
-  consumerServices = acmeConsumerServices ++ [
+  consumerServices = acmeConsumerServices
+    ++ lib.optional config.services.substackDigest.enable "docker-substack-digest"
+    ++ [
     "docker-contact-sync"
     "docker-envoy"
     "docker-foodlog-sync"
@@ -197,7 +199,23 @@ in
       };
     };
 
-    secrets = {
+    secrets = lib.optionalAttrs config.services.substackDigest.enable {
+      substackDigestCookies = {
+        reference = "op://electricpeak/nixos/substack-digest-cookies.json";
+        kind = "file";
+        owner = "junr03";
+        group = "users";
+        mode = "0400";
+        services = [ "docker-substack-digest" ];
+      };
+      substackDigestRemarkableToken = {
+        reference = "op://electricpeak/nixos/substack-digest-remarkable-token";
+        owner = "junr03";
+        group = "users";
+        mode = "0400";
+        services = [ "docker-substack-digest" ];
+      };
+    } // {
       cloudflareDnsEnvironment = {
         reference = "op://electricpeak/nixos/cloudflare-dns-environment.env";
         kind = "file";

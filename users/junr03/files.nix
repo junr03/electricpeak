@@ -64,6 +64,16 @@ in
     force = true;
   };
 
+  "${containers_config}/substack-digest/config_link.json" = {
+    source = ../../containers/config/substack-digest/config.json;
+    onChange = mirrorFileCommand
+      "${containers_config}/substack-digest/config_link.json"
+      "${containers_config}/substack-digest/config.json"
+      "644"
+      "true";
+    force = true;
+  };
+
   "${containers_config}/vdirsyncer/config_link" = {
     source = ../../containers/config/vdirsyncer/config;
     onChange = "${mirrorVdirsyncerConfig}/bin/mirror-vdirsyncer-config ${pkgs.lib.escapeShellArgs [
