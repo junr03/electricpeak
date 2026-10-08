@@ -4,6 +4,13 @@ This repository is the NixOS and Home Manager configuration for the
 `electricpeak` home server. Keep changes small, reproducible, and consistent
 with the existing Nix modules.
 
+## Prefer existing solutions
+
+- Before writing a custom service or script, search for a maintained existing
+  project or built-in capability that meets the requirement. Prefer configuring
+  an existing solution when it fits; document why a custom implementation is
+  needed when none does.
+
 ## Service implementation
 
 - Build new custom services in Rust, using the existing Rust workspace when

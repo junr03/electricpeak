@@ -186,9 +186,14 @@
       "UMASK" = "002";
     };
     volumes = [
+      "/etc/electricpeak/gam7:/opt/gam7:ro"
+      "/etc/electricpeak/kindle-gmail-send.py:/usr/local/bin/kindle-gmail-send:ro"
       "/etc/localtime:/etc/localtime:ro"
       "/mnt/data:/data:rw"
       "/mnt/data/library/books:/books:rw"
+      "/run/onepassword-secrets/kindleFromEmail:/run/secrets/kindle-from-email:ro"
+      "/run/onepassword-secrets/kindleGamOAuth2ServiceJson:/run/secrets/kindle-gam-oauth2service.json:ro"
+      "/run/onepassword-secrets/kindleToEmail:/run/secrets/kindle-to-email:ro"
       "/var/lib/electricpeak/appdata/calibre/autoadd:/calibre-autoadd:rw"
       "/var/lib/electricpeak/appdata/lazylibrarian:/config:rw"
     ];
