@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    electricpeak-services = {
+      url = "github:junr03/electricpeak-services/6d34adbd49c26c166b4d66c74ea8e1dee649a697";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.gallatin.follows = "gallatin";
+    };
     nixpkgs-zerotier.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -35,7 +40,7 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
       lib = pkgs.lib;
-      rustPackages = import ./rust/packages.nix { inherit pkgs; };
+      servicePackages = inputs.electricpeak-services.lib.mkRawbackupPackages { inherit pkgs; };
       zerotierPkgs = import inputs."nixpkgs-zerotier" {
         inherit system;
         config.allowUnfreePredicate = pkg:
@@ -48,6 +53,7 @@
           inherit system;
           specialArgs = {
             inherit self zerotierPkgs requirePrivateSystemConfiguration;
+            electricpeakServices = inputs.electricpeak-services;
             gallatin = inputs.gallatin;
             gallatinRunners = inputs.gallatinRunners;
           };
@@ -80,29 +86,31 @@
 
       packages.${system} = {
         codex = inputs.codex-cli-nix.packages.${system}.default;
-        inherit (rustPackages) rawbackup-status-collector;
+        inherit (servicePackages) rawbackup-status-collector;
+      };
+
+      lib = {
+        servicesSource = inputs.electricpeak-services.outPath;
+        servicesRevision = inputs.electricpeak-services.rev;
       };
 
       checks.${system} = {
-        rawbackup-status-collector = rustPackages.rawbackup-status-collector;
-        rawbackup-api-contract = pkgs.runCommand "rawbackup-api-contract" {
-          nativeBuildInputs = [ pkgs.python3Packages.openapi-spec-validator ];
-        } ''
-          openapi-spec-validator ${./contracts/rawbackup/v1/openapi.yaml}
-          touch $out
-        '';
+        rawbackup-status-collector = servicePackages.rawbackup-status-collector;
+        # Build the actual host integration, including configured workflow packages.
+        electricpeak-public = (self.nixosConfigurations.electricpeak-public.extendModules {
+          modules = [{
+            # Exercise every custom service even though the sanitized host leaves
+            # optional workflows disabled. This check is never activated.
+            services.substackDigest.enable = true;
+            services.photoWorkflow = {
+              enable = true;
+              external.enable = true;
+              internxt.enable = true;
+            };
+          }];
+        }).config.system.build.toplevel;
       };
-
       devShells.${system} = {
-        rust = pkgs.mkShell {
-          packages = with pkgs; [
-            cargo
-            clippy
-            rustc
-            rustfmt
-          ];
-        };
-
         public = pkgs.mkShell {
           packages = with pkgs; [
             actionlint

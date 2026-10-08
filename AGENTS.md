@@ -6,9 +6,9 @@ with the existing Nix modules.
 
 ## Service implementation
 
-- Build new custom services in Rust, using the existing Rust workspace when
-  appropriate. Use Python only when there is a concrete technical reason, and
-  document that reason. Reuse existing OSS tools instead of rewriting them.
+- Application implementations, contracts, tests, and packaging belong in
+  `junr03/electricpeak-services`. Keep only deployment configuration here.
+  Consume locked Nix inputs and digest-pinned images; validate real image pulls.
 
 ## Container definitions
 

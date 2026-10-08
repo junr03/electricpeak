@@ -36,7 +36,8 @@ jobs:
           nix develop .#public --command shellcheck \
             .githooks/pre-push \
             .github/scripts/deploy-public-source.sh \
-            scripts/install-public-hooks.sh
+            scripts/install-public-hooks.sh \
+            .github/scripts/verify-service-images.sh
 
   validate-home-assistant:
     runs-on: ubuntu-latest
@@ -94,14 +95,12 @@ jobs:
           test ! -e private-config/configuration.nix
           nix flake check --no-build
           nix eval .#nixosConfigurations.electricpeak-public.config.networking.hostName
-      - name: Check Rust and API contract
-        run: |
-          nix develop .#rust --command cargo fmt --manifest-path rust/Cargo.toml --all -- --check
-          nix develop .#rust --command cargo clippy --manifest-path rust/Cargo.toml --workspace --all-targets --locked -- --deny warnings
-          nix develop .#rust --command cargo test --manifest-path rust/Cargo.toml --workspace --all-targets --locked
-          nix build .#checks.x86_64-linux.rawbackup-status-collector .#checks.x86_64-linux.rawbackup-api-contract
-      - name: Test photo workflow
-        run: python3 -m unittest discover -s modules/photo-workflow/tests
+      - name: Install PDF validation tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Pull and smoke-test the exact deployed service images
+        run: bash .github/scripts/verify-service-images.sh
+      - name: Build host service integration
+        run: nix build .#checks.x86_64-linux.electricpeak-public --print-build-logs
 
   deploy-production:
     name: Deploy production
