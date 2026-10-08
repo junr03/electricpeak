@@ -65,6 +65,7 @@ lazylibrarian-qbittorrent-user
 lazylibrarian-torznab-api-key
 lazylibrarian-torznab-url
 kindle-from-email
+kindle-mailbox-email
 kindle-to-email
 foodlog-ghcr-token
 foodlog-ghcr-username

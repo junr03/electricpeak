@@ -11,6 +11,7 @@ from pathlib import Path
 
 GAM = "/opt/gam7/gam"
 GAM_CONFIG_DIR = "/config/gam"
+MAILBOX_EMAIL_SECRET = Path("/run/secrets/kindle-mailbox-email")
 FROM_EMAIL_SECRET = Path("/run/secrets/kindle-from-email")
 TO_EMAIL_SECRET = Path("/run/secrets/kindle-to-email")
 SUPPORTED_TYPES = {".epub", ".pdf"}
@@ -50,6 +51,7 @@ def main() -> int:
         if book_path.stat().st_size > MAX_ATTACHMENT_BYTES:
             raise ValueError(f"Downloaded ebook exceeds the 20 MB mail limit: {book_path.name}")
 
+        mailbox = read_secret(MAILBOX_EMAIL_SECRET)
         sender = read_secret(FROM_EMAIL_SECRET)
         recipient = read_secret(TO_EMAIL_SECRET)
         title = metadata.get("BookName") or book_path.stem
@@ -60,7 +62,7 @@ def main() -> int:
             [
                 GAM,
                 "user",
-                sender,
+                mailbox,
                 "sendemail",
                 "to",
                 recipient,

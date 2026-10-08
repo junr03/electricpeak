@@ -15,8 +15,8 @@ maintain the database itself.
 
 ## Configure the live instance
 
-Create the five lazylibrarian-* fields, the Kindle sender and destination
-fields, and the GAM7 service-account attachment in the electricpeak/nixos
+Create the five lazylibrarian-* fields, the Kindle mailbox, From, and
+destination fields, and the GAM7 service-account attachment in the electricpeak/nixos
 1Password item as documented in [secrets.md](secrets.md). Deploy the NixOS
 change, then restart the secret service to apply a rotation:
 
@@ -51,10 +51,13 @@ the service account's numeric client ID with this sole OAuth scope:
     https://www.googleapis.com/auth/gmail.send
 
 Store GAM7's resulting limited oauth2service.json as the
-kindle-gam-oauth2service.json attachment in 1Password. The sender field must
-be an active Workspace Gmail mailbox; the destination field is the Kindle's
-Send to Kindle email address. Add the sender address to Amazon's Approved
-Personal Document Email List.
+kindle-gam-oauth2service.json attachment in 1Password. Set
+kindle-mailbox-email to the active Workspace user mailbox that the service
+account impersonates. Set kindle-from-email to the visible From address, which
+may be a Google Group configured and verified as a Gmail Send mail as address
+on that mailbox. Set kindle-to-email to the Kindle's Send to Kindle email
+address, and add the visible From address to Amazon's Approved Personal
+Document Email List.
 
 Domain-wide delegation is scoped across the Workspace domain: the service
 account can impersonate any user in that domain, but with gmail.send it can

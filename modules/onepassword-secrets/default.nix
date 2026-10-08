@@ -327,6 +327,13 @@ in
         mode = "0400";
         services = [ "docker-lazylibrarian" ];
       };
+      kindleMailboxEmail = {
+        reference = "op://electricpeak/nixos/kindle-mailbox-email";
+        owner = "junr03";
+        group = "junr03";
+        mode = "0400";
+        services = [ "docker-lazylibrarian" ];
+      };
       kindleGamOAuth2ServiceJson = {
         reference = "op://electricpeak/nixos/kindle-gam-oauth2service.json";
         kind = "file";
