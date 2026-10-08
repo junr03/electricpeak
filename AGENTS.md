@@ -38,6 +38,9 @@ with the existing Nix modules.
 - Keep secrets out of source files. Add non-secret `op://` references to
   `modules/onepassword-secrets/default.nix`; never put resolved values or
   service-account tokens in Nix expressions, Compose files, or the repository.
+- When adding or changing optional services or integrations that depend on
+  credentials, default them to disabled when those credentials are missing, so
+  a missing credential cannot disrupt other services.
 - Follow existing Home Manager file-mirroring and `onChange` patterns when
   changing service configuration under `containers/config`.
 - Preserve firewall restrictions and overlay-network scoping when adding
