@@ -24,6 +24,21 @@ torznab_url="$(read_secret /run/secrets/lazylibrarian-torznab-url)"
 torznab_api_key="$(read_secret /run/secrets/lazylibrarian-torznab-api-key)"
 goodreads_rss_url="$(read_secret /run/secrets/lazylibrarian-goodreads-rss-url)"
 
+gam_config_dir=/config/gam
+mkdir -p "$gam_config_dir/gamcache"
+cat > "$gam_config_dir/gam.cfg" <<EOF
+[DEFAULT]
+cache_dir = $gam_config_dir/gamcache
+config_dir = $gam_config_dir
+oauth2service_json = /run/secrets/kindle-gam-oauth2service.json
+client_secrets_json = $gam_config_dir/client_secrets.json
+user_service_account_access_only = true
+todrive_clientaccess = false
+EOF
+printf '{}\n' > "$gam_config_dir/client_secrets.json"
+printf '{}\n' > "$gam_config_dir/oauth2.txt"
+chown -R "$PUID:$PGID" "$gam_config_dir"
+
 set_ini() {
   section="$1"
   key="$2"
@@ -89,6 +104,7 @@ set_ini General ebook_dir /data/incoming/ebooks
 set_ini General download_dir /data/torrents
 set_ini General audio_dir /data/library/audiobooks
 set_ini General audio_tab 1
+set_ini General audiobook_type m4b,mp3,m4a
 set_ini General imp_autoadd /calibre-autoadd
 set_ini General imp_autoadd_copy 1
 set_ini General imp_calibredb ''
@@ -110,6 +126,22 @@ set_ini RSS_0 dispname 'Goodreads want to read'
 set_ini RSS_0 enabled 1
 set_ini RSS_0 host "$goodreads_rss_url"
 set_ini RSS_0 dlpriority 0
-set_ini RSS_0 dltypes E
+set_ini RSS_0 dltypes A,E
+set_ini Email use_email 0
+set_ini Email email_notify_onsnatch 0
+set_ini Email email_notify_ondownload 0
+set_ini Email email_sendfile_ondownload 0
+set_ini Email email_from ''
+set_ini Email email_to ''
+set_ini Email email_smtp_server ''
+set_ini Email email_smtp_port 587
+set_ini Email email_smtp_user ''
+set_ini Email email_smtp_password ''
+set_ini Email email_ssl 0
+set_ini Email email_tls 0
+set_ini Custom use_custom 1
+set_ini Custom custom_notify_onsnatch 0
+set_ini Custom custom_notify_ondownload 1
+set_ini Custom custom_script /usr/local/bin/kindle-gmail-send
 
 chown "$PUID:$PGID" "$config_file"
