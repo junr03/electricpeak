@@ -61,7 +61,7 @@ services:
     image: ghcr.io/junr03/foodlog-sync:latest
     container_name: foodlog-sync
     user: "${PUID}:${PGID}"
-    command: ["--write", "--poll-interval", "900"]
+    command: ["--write", "--poll-interval", "86400"]
     environment:
       - GOOGLE_DRIVE_FOLDER_ID_FILE=/run/secrets/google-drive-folder-id
       - GOOGLE_DRIVE_TOKEN_FILE=/run/secrets/google-drive-token.json
