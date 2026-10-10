@@ -341,14 +341,14 @@ in
       kindleFromEmail = {
         reference = "op://electricpeak/nixos/kindle-from-email";
         owner = "junr03";
-        group = "junr03";
+        group = "users";
         mode = "0400";
         services = [ "docker-lazylibrarian" ];
       };
       kindleMailboxEmail = {
         reference = "op://electricpeak/nixos/kindle-mailbox-email";
         owner = "junr03";
-        group = "junr03";
+        group = "users";
         mode = "0400";
         services = [ "docker-lazylibrarian" ];
       };
@@ -356,14 +356,14 @@ in
         reference = "op://electricpeak/nixos/kindle-gam-oauth2service.json";
         kind = "file";
         owner = "junr03";
-        group = "junr03";
+        group = "users";
         mode = "0400";
         services = [ "docker-lazylibrarian" ];
       };
       kindleToEmail = {
         reference = "op://electricpeak/nixos/kindle-to-email";
         owner = "junr03";
-        group = "junr03";
+        group = "users";
         mode = "0400";
         services = [ "docker-lazylibrarian" ];
       };

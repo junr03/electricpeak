@@ -45,6 +45,11 @@ with the existing Nix modules.
 - Keep secrets out of source files. Add non-secret `op://` references to
   `modules/onepassword-secrets/default.nix`; never put resolved values or
   service-account tokens in Nix expressions, Compose files, or the repository.
+- In OpNix secret declarations, `owner` names a system user and `group` names
+  an existing system group. Do not infer a group from a username. For NixOS
+  normal users, the primary group defaults to `users` unless
+  `users.users.<name>.group` overrides it. Declare custom groups under
+  `users.groups` before referencing them.
 - When adding or changing optional services or integrations that depend on
   credentials, default them to disabled when those credentials are missing, so
   a missing credential cannot disrupt other services.
