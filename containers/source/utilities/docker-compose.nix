@@ -90,13 +90,11 @@
     ];
   };
   virtualisation.oci-containers.containers."rawbackup" = {
-    image = "python:3.13-alpine";
+    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:7858aa1a87cd26a69e721b5b4c8ee6bf688f56996da85e0069196358e954c390";
     volumes = [
-      "/etc/nixos/containers/source/utilities/rawbackup/app:/app:ro"
       "/var/lib/rawbackup:/data:ro"
       "/var/lib/rawbackup/reconcile:/reconcile:rw"
     ];
-    cmd = [ "python" "/app/server.py" ];
     log-driver = "journald";
     extraOptions = [
       "--network-alias=rawbackup"
@@ -118,7 +116,7 @@
     ];
   };
   virtualisation.oci-containers.containers."substack-digest" = {
-    image = "electricpeak-substack-digest:local";
+    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:39080c0a383bf71de3778308d5989a1af53b782b0a81b3496f92578d7f2b30d4";
     environment = {
       "RMAPI_CONFIG_DIR" = "/data/rmapi";
     };

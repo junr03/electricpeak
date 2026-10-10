@@ -9,7 +9,8 @@ passwords, API keys, and tokens are supplied by GitHub environments or
 
 ```sh
 nix flake check --no-build
-nix develop .#rust --command cargo test --manifest-path rust/Cargo.toml --workspace --locked
+bash .github/scripts/verify-service-images.sh
+nix build .#checks.x86_64-linux.electricpeak-public
 python3 scripts/check-public-boundary.py --history
 nix develop .#public --command gitleaks git --redact --no-banner .
 ```
@@ -71,8 +72,10 @@ secrets remain in 1Password and are never copied into GitHub.
 - `configuration.nix`, `modules/`, and `users/`: NixOS and Home Manager modules.
 - `containers/source/`: Compose YAML and generated Nix modules.
 - `containers/config/`: public configuration examples and file-mirroring helpers.
-- `rust/` and `contracts/`: host tooling and the Raw Backup API contract.
+- [electricpeak-services](https://github.com/junr03/electricpeak-services): application code, contracts, tests, Nix packages, and container releases.
 
 Edit Compose YAML, then generate the Nix modules with
 `./containers/generate-docker-modules.sh`. Do not hand-edit generated files.
 For local generation and checks, use the pinned flake dependencies.
+
+See [service updates](docs/services.md) for the pinned application boundary.
