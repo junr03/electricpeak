@@ -27,6 +27,7 @@ jobs:
       - name: Reject private deployment content
         run: |
           python3 -m unittest discover -s scripts/tests
+          python3 -m unittest discover -s .github/scripts/tests
           python3 scripts/check-public-boundary.py --history
       - name: Scan Git history for credentials
         run: nix develop .#public --command gitleaks git --redact --no-banner .
@@ -36,6 +37,8 @@ jobs:
           nix develop .#public --command shellcheck \
             .githooks/pre-push \
             .github/scripts/deploy-public-source.sh \
+            .github/scripts/check-deployment-connection.sh \
+            .github/scripts/checkout-private-source.sh \
             scripts/install-public-hooks.sh
 
   validate-home-assistant:
@@ -142,14 +145,11 @@ jobs:
           echo "::add-mask::$revision"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
 
-      - name: Check out private configuration
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          repository: junr03/electricpeak-sensitive
-          ref: ${{ steps.private.outputs.revision }}
-          token: ${{ secrets.PAT_ELECTRICPEAK }}
-          path: private-config
-          persist-credentials: false
+      - name: Check out private configuration without publishing metadata
+        env:
+          PRIVATE_REVISION: ${{ steps.private.outputs.revision }}
+          GH_TOKEN: ${{ secrets.PAT_ELECTRICPEAK }}
+        run: bash .github/scripts/checkout-private-source.sh
 
       - name: Connect to the private network
         uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
@@ -168,6 +168,12 @@ jobs:
           chmod 600 "$HOME/.ssh/electricpeak"
           printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Check server connectivity and SSH authentication
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          TS_SERVER_HOST: ${{ secrets.TS_SERVER_HOST }}
+        run: bash .github/scripts/check-deployment-connection.sh
 
       - name: Build and deploy the exact assembled configuration
         env:
