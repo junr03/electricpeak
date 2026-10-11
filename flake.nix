@@ -35,6 +35,13 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
       lib = pkgs.lib;
+      # Patch the pinned source so the upstream module's private package
+      # instance also retains its 1Password SDK client during retrieval.
+      patchedOpnix = pkgs.applyPatches {
+        name = "opnix-client-lifetime-source";
+        src = opnix.outPath;
+        patches = [ ./modules/onepassword-secrets/opnix-client-lifetime.patch ];
+      };
       rustPackages = import ./rust/packages.nix { inherit pkgs; };
       zerotierPkgs = import inputs."nixpkgs-zerotier" {
         inherit system;
@@ -53,7 +60,7 @@
           };
           modules = [
             ./configuration.nix
-            opnix.nixosModules.default
+            (import "${patchedOpnix}/nix/module.nix")
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -80,6 +87,7 @@
 
       packages.${system} = {
         codex = inputs.codex-cli-nix.packages.${system}.default;
+        opnix = import "${patchedOpnix}/nix/package.nix" { inherit pkgs; };
         inherit (rustPackages) rawbackup-status-collector;
       };
 

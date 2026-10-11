@@ -1,0 +1,177 @@
+--- a/internal/onepass/client.go
++++ b/internal/onepass/client.go
+@@ -6,6 +6,7 @@
+ 	"fmt"
+ 	"net/url"
+ 	"os"
++	"runtime"
+ 	"strings"
+ 	"time"
+ 
+@@ -37,17 +38,20 @@
+ }
+ 
+ type sdkAPIs struct {
+-	secrets sdkSecretsAPI
+-	vaults  sdkVaultsAPI
+-	items   sdkItemsAPI
+-	files   sdkFilesAPI
++	sdkClient *onepassword.Client
++	secrets   sdkSecretsAPI
++	vaults    sdkVaultsAPI
++	items     sdkItemsAPI
++	files     sdkFilesAPI
+ }
+ 
+ type Client struct {
+-	secrets sdkSecretsAPI
+-	vaults  sdkVaultsAPI
+-	items   sdkItemsAPI
+-	files   sdkFilesAPI
++	// The SDK finalizer releases the client ID even when API objects remain live.
++	sdkClient *onepassword.Client
++	secrets   sdkSecretsAPI
++	vaults    sdkVaultsAPI
++	items     sdkItemsAPI
++	files     sdkFilesAPI
+ }
+ 
+ var (
+@@ -62,10 +66,11 @@
+ 		}
+ 		items := client.Items()
+ 		return sdkAPIs{
+-			secrets: client.Secrets(),
+-			vaults:  client.Vaults(),
+-			items:   items,
+-			files:   items.Files(),
++			sdkClient: client,
++			secrets:   client.Secrets(),
++			vaults:    client.Vaults(),
++			items:     items,
++			files:     items.Files(),
+ 		}, nil
+ 	}
+ 	retrySleep = time.Sleep
+@@ -123,7 +128,7 @@
+ 		)
+ 	}
+ 
+-	return &Client{secrets: apis.secrets, vaults: apis.vaults, items: apis.items, files: apis.files}, nil
++	return &Client{sdkClient: apis.sdkClient, secrets: apis.secrets, vaults: apis.vaults, items: apis.items, files: apis.files}, nil
+ }
+ 
+ func (c *Client) ResolveSecret(reference string) (string, error) {
+@@ -135,6 +140,7 @@
+ }
+ 
+ func (c *Client) ResolveSecrets(references []string) (map[string]string, error) {
++	defer runtime.KeepAlive(c.sdkClient)
+ 	response, err := retryOperation(defaultResolveAttempts, "Resolving 1Password references", func() (onepassword.ResolveAllResponse, error) {
+ 		return c.secrets.ResolveAll(context.Background(), references)
+ 	}, shouldRetryProviderError)
+@@ -183,6 +189,7 @@
+ }
+ 
+ func (c *Client) ResolveFiles(references []string) (map[string][]byte, error) {
++	defer runtime.KeepAlive(c.sdkClient)
+ 	ctx := context.Background()
+ 	vaults, err := retryOperation(defaultResolveAttempts, "Listing 1Password vaults", func() ([]onepassword.VaultOverview, error) {
+ 		return c.vaults.List(ctx)
+--- /dev/null
++++ b/internal/onepass/client_lifetime_test.go
+@@ -0,0 +1,81 @@
++package onepass
++
++import (
++	"context"
++	"runtime"
++	"testing"
++
++	"github.com/1password/onepassword-sdk-go"
++)
++
++// Model the SDK finalizer without contacting 1Password or using credentials.
++func TestSDKClientSurvivesGarbageCollectionDuringResolution(t *testing.T) {
++	for _, kind := range []string{"field", "file"} {
++		t.Run(kind, func(t *testing.T) {
++			original := newSDKClient
++			t.Cleanup(func() { newSDKClient = original })
++			t.Setenv("OP_SERVICE_ACCOUNT_TOKEN", "ops_test_token")
++
++			released := make(chan struct{})
++			checkAlive := func() {
++				t.Helper()
++				for i := 0; i < 3; i++ {
++					runtime.GC()
++					runtime.Gosched()
++				}
++				select {
++				case <-released:
++					t.Fatal("SDK client was finalized during secret resolution")
++				default:
++				}
++			}
++
++			newSDKClient = func(context.Context, string) (sdkAPIs, error) {
++				owner := &onepassword.Client{}
++				runtime.SetFinalizer(owner, func(*onepassword.Client) { close(released) })
++				return sdkAPIs{
++					sdkClient: owner,
++					secrets: fakeSecretsAPI{resolve: func(context.Context, string) (string, error) {
++						checkAlive()
++						return "field-value", nil
++					}},
++					vaults: fakeVaultsAPI{list: func(context.Context, ...onepassword.VaultListParams) ([]onepassword.VaultOverview, error) {
++						checkAlive()
++						return []onepassword.VaultOverview{{ID: "vault", Title: "Vault"}}, nil
++					}},
++					items: fakeItemsAPI{
++						list: func(context.Context, string, ...onepassword.ItemListFilter) ([]onepassword.ItemOverview, error) {
++							checkAlive()
++							return []onepassword.ItemOverview{{ID: "item", Title: "Item"}}, nil
++						},
++						get: func(context.Context, string, string) (onepassword.Item, error) {
++							checkAlive()
++							return onepassword.Item{Document: &onepassword.FileAttributes{ID: "file", Name: "file.bin"}}, nil
++						},
++					},
++					files: fakeFilesAPI{read: func(context.Context, string, string, onepassword.FileAttributes) ([]byte, error) {
++						checkAlive()
++						return []byte{0x00, 0xff}, nil
++					}},
++				}, nil
++			}
++
++			client, err := NewClient("")
++			if err != nil {
++				t.Fatal(err)
++			}
++			if kind == "field" {
++				value, err := client.ResolveSecret("op://Vault/Item/field")
++				if err != nil || value != "field-value" {
++					t.Fatalf("unexpected field result: %q, %v", value, err)
++				}
++			} else {
++				const reference = "op://Vault/Item/file.bin"
++				values, err := client.ResolveFiles([]string{reference})
++				if err != nil || string(values[reference]) != string([]byte{0x00, 0xff}) {
++					t.Fatalf("unexpected file result: %v, %v", values, err)
++				}
++			}
++		})
++	}
++}
+--- a/nix/package.nix
++++ b/nix/package.nix
+@@ -5,4 +5,10 @@
+   src = ../.;
+   vendorHash = "sha256-H1v3SmLSrKgIUJInloLrFKTECddhZtBomFyIb8aqFzk=";
+   subPackages = ["cmd/opnix"];
++  # The default buildGoModule check only tests subPackages, missing SDK tests.
++  checkPhase = ''
++    runHook preCheck
++    go test ./...
++    runHook postCheck
++  '';
+ }

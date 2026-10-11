@@ -89,6 +89,8 @@ jobs:
       - name: Check committed Compose modules are current
         if: github.event_name != 'pull_request'
         run: git diff --exit-code -- containers/source/
+      - name: Build patched OpNix and run its regression tests
+        run: nix build .#opnix
       - name: Evaluate public configuration
         run: |
           test ! -e private-config/configuration.nix
