@@ -14,6 +14,7 @@
     image = "qmcgaw/gluetun:v3.41.3";
     environment = {
       "PORT_FORWARD_ONLY" = "on";
+      "SERVER_HOSTNAMES" = "node-us-238.protonvpn.net";
       "TZ" = "America/Los_Angeles";
       "VPN_PORT_FORWARDING" = "on";
       "VPN_PORT_FORWARDING_DOWN_COMMAND" = "/bin/sh -c 'wget -O- --retry-connrefused --post-data \"json={\\\"listen_port\\\":0,\\\"current_network_interface\\\":\\\"lo\\\"}\" http://127.0.0.1:8080/api/v2/app/setPreferences'";
@@ -58,6 +59,7 @@
     image = "tmmrtn/mousehole:latest";
     environment = {
       "MOUSEHOLE_HTTPS_ONLY_COOKIES" = "true";
+      "MOUSEHOLE_STATE_DIR_PATH" = "/var/lib/mousehole";
       "TZ" = "America/Los_Angeles";
     };
     volumes = [
