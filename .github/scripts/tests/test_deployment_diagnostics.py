@@ -56,6 +56,18 @@ elif tool == "nc":
         sys.exit(1)
 elif tool == "rsync":
     sys.exit(1 if scenario == "transfer_failed" else 0)
+elif tool == "git":
+    print("private commit subject do-not-publish.example.test", file=sys.stderr)
+    operation = args[0] if args[0] == "init" else args[2]
+    if scenario == "git_" + operation + "_failed":
+        sys.exit(1)
+    if operation == "init":
+        Path("private-config").mkdir()
+    elif operation == "rev-parse":
+        print(("c" if scenario == "git_wrong_revision" else "b") * 40)
+    elif operation == "fetch":
+        with open(os.environ["TRACE"], "a") as trace:
+            trace.write(json.dumps(["fetch-auth", os.environ.get("GIT_CONFIG_VALUE_0")]) + "\n")
 elif tool == "ssh":
     command = args[-1]
     if command == "true":
@@ -77,6 +89,9 @@ elif tool == "ssh":
     if scenario == "snapshot_failed":
         sys.exit(255)
     if command.startswith("mktemp"):
+        if scenario in ("checkout_invalid", "checkout_transport_failed"):
+            print("do-not-publish.example.test")
+            sys.exit(255 if scenario == "checkout_transport_failed" else 0)
         print("/tmp/electricpeak-deploy.fixture")
     elif "nixos-rebuild build" in command:
         sys.exit(1 if scenario == "build_failed" else 0)
@@ -99,7 +114,7 @@ class DeploymentDiagnosticsTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         tools = self.root / "bin"
         tools.mkdir()
-        for name in ("tailscale", "getent", "nc", "ssh", "timeout", "sleep", "rsync"):
+        for name in ("tailscale", "getent", "nc", "ssh", "timeout", "sleep", "rsync", "git"):
             executable = tools / name
             executable.write_text(f"#!{sys.executable}\n" + FAKE_TOOL)
             executable.chmod(0o755)
@@ -107,15 +122,18 @@ class DeploymentDiagnosticsTests(unittest.TestCase):
                         HOME=str(self.root), SERVER_USER="deployer",
                         TS_SERVER_HOST=PRIVATE_MARKER,
                         PUBLIC_REVISION="a" * 40, PRIVATE_REVISION="b" * 40,
+                        GH_TOKEN="fixture-read-token",
                         DEPLOYMENT_UNIT="electricpeak-deploy-123-1",
                         TRACE=str(self.root / "trace"), COUNTER=str(self.root / "counter"),
                         GITHUB_STEP_SUMMARY=str(self.root / "summary"))
 
-    def run_script(self, scenario="success", deploy=False, activate=True):
+    def run_script(self, scenario="success", deploy=False, activate=True, checkout=False):
         env = dict(self.env, SCENARIO=scenario, ACTIVATE=str(activate).lower())
         for path in (env["TRACE"], env["COUNTER"], env["GITHUB_STEP_SUMMARY"]):
             Path(path).unlink(missing_ok=True)
         name = "deploy-public-source.sh" if deploy else "check-deployment-connection.sh"
+        if checkout:
+            name = "checkout-private-source.sh"
         args = []
         if deploy:
             source = self.root / "source"
@@ -127,8 +145,9 @@ class DeploymentDiagnosticsTests(unittest.TestCase):
                 (controller / ".github/scripts" / script).touch()
             args = [str(source), str(controller)]
         result = subprocess.run(["bash", str(SCRIPTS / name), *args], env=env,
-                                capture_output=True, text=True, timeout=10)
-        summary = Path(env["GITHUB_STEP_SUMMARY"]).read_text()
+                                cwd=self.root, capture_output=True, text=True, timeout=10)
+        summary_path = Path(env["GITHUB_STEP_SUMMARY"])
+        summary = summary_path.read_text() if summary_path.exists() else ""
         self.output = result.stdout + result.stderr + summary
         self.trace = [json.loads(line) for line in Path(env["TRACE"]).read_text().splitlines()]
         return result
@@ -211,6 +230,52 @@ class DeploymentDiagnosticsTests(unittest.TestCase):
         self.assertEqual(self.run_script(deploy=True).returncode, 0)
         self.assertIn("Deployment stage: Runtime verification", self.output)
         self.assertTrue(any(call[-1].startswith("rm -rf") for call in self.trace if call[0] == "ssh"))
+
+    def test_unvalidated_checkout_output_is_never_published_or_used(self):
+        for scenario in ("checkout_invalid", "checkout_transport_failed"):
+            with self.subTest(scenario=scenario):
+                with tempfile.TemporaryDirectory(dir=self.root) as case_root:
+                    original_root = self.root
+                    self.root = Path(case_root)
+                    try:
+                        result = self.run_script(scenario, deploy=True)
+                    finally:
+                        self.root = original_root
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn(PRIVATE_MARKER, self.output)
+                self.assertIn("No validated deployment checkout", self.output)
+                self.assertFalse(any(call[0] == "rsync" for call in self.trace))
+                self.assertFalse(any(call[-1].startswith("rm -rf") for call in self.trace if call[0] == "ssh"))
+
+    def test_private_checkout_hides_metadata_and_verifies_revision(self):
+        self.assertEqual(self.run_script(checkout=True).returncode, 0)
+        self.assertNotIn(PRIVATE_MARKER, self.output)
+        self.assertNotIn("b" * 40, self.output)
+        self.assertNotIn(self.env["GH_TOKEN"], self.output)
+        auth = [call[1] for call in self.trace if call[0] == "fetch-auth"]
+        self.assertEqual(len(auth), 1)
+        self.assertTrue(auth[0].startswith("AUTHORIZATION: basic "))
+        git_calls = [call for call in self.trace if call[0] == "git"]
+        self.assertTrue(any("rev-parse" in call for call in git_calls))
+        self.assertFalse(any("AUTHORIZATION" in argument for call in git_calls for argument in call))
+
+    def test_private_checkout_failures_publish_only_fixed_messages(self):
+        for scenario, expected in (("git_init_failed", "initialization"),
+                                   ("git_fetch_failed", "fetch"),
+                                   ("git_checkout_failed", "working tree setup"),
+                                   ("git_wrong_revision", "revision verification")):
+            with self.subTest(scenario=scenario):
+                with tempfile.TemporaryDirectory(dir=self.root) as case_root:
+                    original_root = self.root
+                    self.root = Path(case_root)
+                    try:
+                        result = self.run_script(scenario, checkout=True)
+                    finally:
+                        self.root = original_root
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, self.output)
+                self.assertNotIn(PRIVATE_MARKER, self.output)
+                self.assertNotIn(self.env["GH_TOKEN"], self.output)
 
 
 if __name__ == "__main__":

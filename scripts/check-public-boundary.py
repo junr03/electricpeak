@@ -72,6 +72,10 @@ PR_JOB_FORBIDDEN = (
     (re.compile(r"\$\{\{\s*secrets\."), "references GitHub secrets"),
     (re.compile(r"(?m)^\s{4}environment\s*:"), "declares a protected environment"),
     (re.compile(r"repository\s*:\s*junr03/electricpeak-sensitive"), "checks out private configuration"),
+    (
+        re.compile(r"(?:run:\s*(?:bash\s+)?(?:\./)?|\bbash\s+(?:\./)?)\.github/scripts/checkout-private-source\.sh"),
+        "checks out private configuration",
+    ),
     (re.compile(r"tailscale/github-action"), "connects to the private network"),
 )
 
@@ -79,8 +83,20 @@ DEPLOY_JOB_REQUIREMENTS = (
     "github.repository == 'junr03/electricpeak'",
     "github.ref == 'refs/heads/main'",
     "environment: production",
-    "repository: junr03/electricpeak-sensitive",
-    "token: ${{ secrets.PAT_ELECTRICPEAK }}",
+)
+
+# Preserve validation of historical workflows while accepting the quiet
+# checkout used by current deployments. Both require explicit credentials.
+PRIVATE_CHECKOUT_REQUIREMENTS = (
+    (
+        "repository: junr03/electricpeak-sensitive",
+        "token: ${{ secrets.PAT_ELECTRICPEAK }}",
+    ),
+    (
+        "run: bash .github/scripts/checkout-private-source.sh",
+        "GH_TOKEN: ${{ secrets.PAT_ELECTRICPEAK }}",
+        "PRIVATE_REVISION: ${{ steps.private.outputs.revision }}",
+    ),
 )
 
 
@@ -189,6 +205,13 @@ def inspect_ci_workflow(
                     failures.append(
                         f"{location}: production deployment is missing guard {requirement!r}"
                     )
+            if not any(
+                all(requirement in section for requirement in checkout)
+                for checkout in PRIVATE_CHECKOUT_REQUIREMENTS
+            ):
+                failures.append(
+                    f"{location}: production deployment is missing private checkout guards"
+                )
             continue
         for pattern, description in PR_JOB_FORBIDDEN:
             if pattern.search(section):

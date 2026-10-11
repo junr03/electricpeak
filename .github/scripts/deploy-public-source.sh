@@ -34,7 +34,7 @@ cleanup() {
     echo "Private deployment diagnostics retained on the server for $DEPLOYMENT_UNIT."
     return
   fi
-  [[ -n $deployment_dir ]] || return 0
+  [[ $deployment_dir =~ ^/tmp/electricpeak-deploy\.[A-Za-z0-9]+$ ]] || return 0
   ssh_server "rm -rf -- '$deployment_dir'" || true
 }
 report() {
@@ -57,12 +57,12 @@ finish() {
   if ((exit_code != 0)); then
     report "Deployment failed during: $stage (exit $exit_code; elapsed ${SECONDS}s)."
     printf '::error::Deployment failed during: %s (exit %s).\n' "$stage" "$exit_code" >&2
-    if [[ -n $deployment_dir ]]; then
+    if [[ $deployment_dir =~ ^/tmp/electricpeak-deploy\.[A-Za-z0-9]+$ ]]; then
       retain=true
       report "Inspect private diagnostics on the server: checkout $deployment_dir; unit $DEPLOYMENT_UNIT."
       report 'Logs, when available: build.log, launch.log, controller.log, runtime-verification.log.'
     else
-      report 'No deployment checkout was created; no build or activation was started.'
+      report 'No validated deployment checkout is available; no build or activation was started.'
     fi
   else
     report "Deployment completed successfully (elapsed ${SECONDS}s)."

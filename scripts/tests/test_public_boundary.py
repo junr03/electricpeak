@@ -170,6 +170,47 @@ jobs:
         )
         self.assertTrue(any("missing guard" in failure for failure in failures))
 
+    def test_legacy_and_quiet_checkouts_preserve_production_guards(self):
+        prefix = """jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    if: github.repository == 'junr03/electricpeak' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+"""
+        for checkout in MODULE.PRIVATE_CHECKOUT_REQUIREMENTS:
+            workflow = prefix + "\n".join(f"      {line}" for line in checkout) + "\n"
+            with self.subTest(checkout=checkout):
+                self.assertEqual(MODULE.inspect_ci_workflow(
+                    "fixture", ".github/workflows/ci.yml", workflow,
+                    allow_production_deploy=True), [])
+        for missing in MODULE.PRIVATE_CHECKOUT_REQUIREMENTS[1]:
+            incomplete = [line for line in MODULE.PRIVATE_CHECKOUT_REQUIREMENTS[1] if line != missing]
+            workflow = prefix + "\n".join(f"      {line}" for line in incomplete) + "\n"
+            with self.subTest(missing=missing):
+                failures = MODULE.inspect_ci_workflow(
+                    "fixture", ".github/workflows/ci.yml", workflow,
+                    allow_production_deploy=True)
+                self.assertTrue(any("missing private checkout guards" in error for error in failures))
+
+    def test_pull_request_job_cannot_invoke_quiet_private_checkout(self):
+        failures = MODULE.inspect_ci_workflow("fixture", ".github/workflows/ci.yml", """jobs:
+  public-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - run: bash .github/scripts/checkout-private-source.sh
+""", allow_production_deploy=True)
+        self.assertTrue(any("checks out private configuration" in error for error in failures))
+
+    def test_pull_request_job_can_lint_private_checkout_script(self):
+        failures = MODULE.inspect_ci_workflow("fixture", ".github/workflows/ci.yml", """jobs:
+  public-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - run: shellcheck .github/scripts/checkout-private-source.sh
+""", allow_production_deploy=True)
+        self.assertEqual(failures, [])
+
 
 if __name__ == "__main__":
     unittest.main()
