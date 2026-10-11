@@ -27,6 +27,7 @@ jobs:
       - name: Reject private deployment content
         run: |
           python3 -m unittest discover -s scripts/tests
+          python3 -m unittest discover -s .github/scripts/tests
           python3 scripts/check-public-boundary.py --history
       - name: Scan Git history for credentials
         run: nix develop .#public --command gitleaks git --redact --no-banner .
@@ -36,6 +37,7 @@ jobs:
           nix develop .#public --command shellcheck \
             .githooks/pre-push \
             .github/scripts/deploy-public-source.sh \
+            .github/scripts/check-deployment-connection.sh \
             scripts/install-public-hooks.sh
 
   validate-home-assistant:
@@ -168,6 +170,12 @@ jobs:
           chmod 600 "$HOME/.ssh/electricpeak"
           printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Check server connectivity and SSH authentication
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          TS_SERVER_HOST: ${{ secrets.TS_SERVER_HOST }}
+        run: bash .github/scripts/check-deployment-connection.sh
 
       - name: Build and deploy the exact assembled configuration
         env:
