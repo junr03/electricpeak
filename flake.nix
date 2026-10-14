@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     electricpeak-services = {
-      url = "github:junr03/electricpeak-services/6d34adbd49c26c166b4d66c74ea8e1dee649a697";
+      url = "github:junr03/electricpeak-services/8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gallatin.follows = "gallatin";
     };
@@ -40,7 +40,16 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
       lib = pkgs.lib;
-      servicePackages = inputs.electricpeak-services.lib.mkRawbackupPackages { inherit pkgs; };
+      # Patch the pinned source so the upstream module's private package
+      # instance also retains its 1Password SDK client during retrieval.
+      patchedOpnix = pkgs.applyPatches {
+        name = "opnix-client-lifetime-source";
+        src = opnix.outPath;
+        patches = [ ./modules/onepassword-secrets/opnix-client-lifetime.patch ];
+      };
+      servicePackages =
+        inputs.electricpeak-services.lib.mkRawbackupPackages { inherit pkgs; }
+        // inputs.electricpeak-services.lib.mkStatusPackages { inherit pkgs; };
       zerotierPkgs = import inputs."nixpkgs-zerotier" {
         inherit system;
         config.allowUnfreePredicate = pkg:
@@ -59,7 +68,7 @@
           };
           modules = [
             ./configuration.nix
-            opnix.nixosModules.default
+            (import "${patchedOpnix}/nix/module.nix")
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -86,7 +95,8 @@
 
       packages.${system} = {
         codex = inputs.codex-cli-nix.packages.${system}.default;
-        inherit (servicePackages) rawbackup-status-collector;
+        opnix = import "${patchedOpnix}/nix/package.nix" { inherit pkgs; };
+        inherit (servicePackages) rawbackup-status-collector electricpeak-status-collector;
       };
 
       lib = {

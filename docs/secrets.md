@@ -29,6 +29,24 @@ Runtime credentials are provisioned by the NixOS secret module from the
 configured secret manager. Keep secret references and provisioning logic in
 the module, but never replace references with their resolved values.
 
+### Local OpNix patch
+
+The flake applies `modules/onepassword-secrets/opnix-client-lifetime.patch` to
+the pinned OpNix source before importing its NixOS module. This keeps the parent
+1Password SDK client alive throughout field and file retrieval, preventing its
+garbage-collection finalizer from releasing the client ID while API calls are
+still using it. The patch includes a regression test that forces garbage
+collection during retrieval without using real credentials.
+
+Patching the source also covers the upstream module's internally constructed
+package and the installed CLI. The OpNix input and dependency hashes stay
+pinned. Once the fix is available upstream, update the input and remove the
+local patch and patched-source import together.
+
+Build `nix build .#opnix` before running `nix flake check --no-build` on a fresh
+checkout. Importing the patched module requires Nix to materialize its source.
+The package build runs all Go tests, including the client-lifetime regression.
+
 ### 1Password storage rules
 
 1Password custom fields are single-line values. The module uses fields only for
@@ -51,6 +69,7 @@ names:
 | `home-assistant-templates.yaml` | Home Assistant templates |
 | `homarr-environment.env` | Homarr environment file |
 | `junr03-authorized-keys.txt` | `junr03` SSH authorized keys |
+| `kindle-gam-oauth2service.json` | GAM7 service-account credential for Gmail API send-only access |
 
 The remaining references are scalar fields and must not contain newlines:
 
@@ -63,6 +82,9 @@ lazylibrarian-qbittorrent-pass
 lazylibrarian-qbittorrent-user
 lazylibrarian-torznab-api-key
 lazylibrarian-torznab-url
+kindle-from-email
+kindle-mailbox-email
+kindle-to-email
 foodlog-ghcr-token
 foodlog-ghcr-username
 foodlog-google-drive-folder-id

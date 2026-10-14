@@ -15,7 +15,7 @@ services = json.load(sys.stdin)["services"]
 images = {service["image"] for service in services.values()
           if service.get("image", "").startswith("ghcr.io/junr03/electricpeak-services/")}
 assert images, "No electricpeak-services images found in deployment Compose"
-for name in ("rawbackup", "substack-digest"):
+for name in ("rawbackup", "substack-digest", "status"):
     assert services[name]["image"] in images, f"{name} must consume the published service"
 assert not any(v.get("target") == "/app" for v in services["rawbackup"].get("volumes", [])), "Application source must come from the image"
 for image in sorted(images):
@@ -37,6 +37,9 @@ while IFS= read -r image; do
       ;;
     ghcr.io/junr03/electricpeak-services/substack-digest@*)
       bash "$services_source/scripts/smoke-substack-digest.sh" "$image"
+      ;;
+    ghcr.io/junr03/electricpeak-services/status@*)
+      bash "$services_source/scripts/smoke-status.sh" "$image"
       ;;
     *) echo "Add a runtime smoke test for $image before deploying it" >&2; exit 1 ;;
   esac

@@ -4,6 +4,13 @@ This repository is the NixOS and Home Manager configuration for the
 `electricpeak` home server. Keep changes small, reproducible, and consistent
 with the existing Nix modules.
 
+## Prefer existing solutions
+
+- Before writing a custom service or script, search for a maintained existing
+  project or built-in capability that meets the requirement. Prefer configuring
+  an existing solution when it fits; document why a custom implementation is
+  needed when none does.
+
 ## Service implementation
 
 - Application implementations, contracts, tests, and packaging belong in
@@ -38,6 +45,11 @@ with the existing Nix modules.
 - Keep secrets out of source files. Add non-secret `op://` references to
   `modules/onepassword-secrets/default.nix`; never put resolved values or
   service-account tokens in Nix expressions, Compose files, or the repository.
+- In OpNix secret declarations, `owner` names a system user and `group` names
+  an existing system group. Do not infer a group from a username. For NixOS
+  normal users, the primary group defaults to `users` unless
+  `users.users.<name>.group` overrides it. Declare custom groups under
+  `users.groups` before referencing them.
 - When adding or changing optional services or integrations that depend on
   credentials, default them to disabled when those credentials are missing, so
   a missing credential cannot disrupt other services.

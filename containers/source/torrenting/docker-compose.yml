@@ -10,6 +10,8 @@ services:
       - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY_SECRETFILE=/run/secrets/wireguard_private_key
+      # Keep MAM sessions on the current Dallas exit network across reconnects.
+      - SERVER_HOSTNAMES=node-us-238.protonvpn.net
       - PORT_FORWARD_ONLY=on
       - VPN_PORT_FORWARDING=on
       - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences'
@@ -33,6 +35,7 @@ services:
     network_mode: "service:gluetun"
     environment:
       - TZ=${TZ}
+      - MOUSEHOLE_STATE_DIR_PATH=/var/lib/mousehole
       - MOUSEHOLE_HTTPS_ONLY_COOKIES=true
     volumes:
       # persist cookie data across container restarts
