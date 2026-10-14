@@ -90,7 +90,7 @@
     ];
   };
   virtualisation.oci-containers.containers."rawbackup" = {
-    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:7858aa1a87cd26a69e721b5b4c8ee6bf688f56996da85e0069196358e954c390";
+    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:2775cb81d7cd57e70bc64f0d7d4e9dd6a48705dbcca0ca9bed363b0ebe86b5ce";
     volumes = [
       "/var/lib/rawbackup:/data:ro"
       "/var/lib/rawbackup/reconcile:/reconcile:rw"
@@ -115,8 +115,35 @@
       "docker-compose-electricpeak-root.target"
     ];
   };
+  virtualisation.oci-containers.containers."status" = {
+    image = "ghcr.io/junr03/electricpeak-services/status@sha256:99957a267a722fefb0af9f6cfc4b73ebfbc51288c015049d7d3186be0aaca06d";
+    volumes = [
+      "/var/lib/electricpeak-status:/srv/status-data:ro"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--network-alias=status"
+      "--network=electricpeak"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-status" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
   virtualisation.oci-containers.containers."substack-digest" = {
-    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:39080c0a383bf71de3778308d5989a1af53b782b0a81b3496f92578d7f2b30d4";
+    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:1ca5b960d09df62f4a0d466ec06fe1ba4fcc66b16fe58caa17a2c04a34b19039";
     environment = {
       "RMAPI_CONFIG_DIR" = "/data/rmapi";
     };
