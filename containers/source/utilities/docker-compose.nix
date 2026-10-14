@@ -117,6 +117,35 @@
       "docker-compose-electricpeak-root.target"
     ];
   };
+  virtualisation.oci-containers.containers."status" = {
+    image = "nginxinc/nginx-unprivileged:1.29-alpine";
+    volumes = [
+      "/etc/nixos/containers/source/utilities/status/app:/usr/share/nginx/html:ro"
+      "/etc/nixos/containers/source/utilities/status/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+      "/var/lib/electricpeak-status:/srv/status-data:ro"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--network-alias=status"
+      "--network=electricpeak"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-status" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
   virtualisation.oci-containers.containers."substack-digest" = {
     image = "electricpeak-substack-digest:local";
     environment = {
