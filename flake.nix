@@ -88,10 +88,11 @@
       packages.${system} = {
         codex = inputs.codex-cli-nix.packages.${system}.default;
         opnix = import "${patchedOpnix}/nix/package.nix" { inherit pkgs; };
-        inherit (rustPackages) rawbackup-status-collector;
+        inherit (rustPackages) electricpeak-status-collector rawbackup-status-collector;
       };
 
       checks.${system} = {
+        electricpeak-status-collector = rustPackages.electricpeak-status-collector;
         rawbackup-status-collector = rustPackages.rawbackup-status-collector;
         rawbackup-api-contract = pkgs.runCommand "rawbackup-api-contract" {
           nativeBuildInputs = [ pkgs.python3Packages.openapi-spec-validator ];

@@ -104,7 +104,7 @@ jobs:
           nix develop .#rust --command cargo fmt --manifest-path rust/Cargo.toml --all -- --check
           nix develop .#rust --command cargo clippy --manifest-path rust/Cargo.toml --workspace --all-targets --locked -- --deny warnings
           nix develop .#rust --command cargo test --manifest-path rust/Cargo.toml --workspace --all-targets --locked
-          nix build .#checks.x86_64-linux.rawbackup-status-collector .#checks.x86_64-linux.rawbackup-api-contract
+          nix build .#checks.x86_64-linux.electricpeak-status-collector .#checks.x86_64-linux.rawbackup-status-collector .#checks.x86_64-linux.rawbackup-api-contract
       - name: Test photo workflow
         run: python3 -m unittest discover -s modules/photo-workflow/tests
 

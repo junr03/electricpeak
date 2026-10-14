@@ -72,7 +72,7 @@ secrets remain in 1Password and are never copied into GitHub.
 - `configuration.nix`, `modules/`, and `users/`: NixOS and Home Manager modules.
 - `containers/source/`: Compose YAML and generated Nix modules.
 - `containers/config/`: public configuration examples and file-mirroring helpers.
-- `rust/` and `contracts/`: host tooling and the Raw Backup API contract.
+- `rust/` and `contracts/`: host tooling, the status page collector, and the Raw Backup API contract.
 
 Edit Compose YAML, then generate the Nix modules with
 `./containers/generate-docker-modules.sh`. Do not hand-edit generated files.

@@ -36,6 +36,21 @@ services:
       - electricpeak
     restart: unless-stopped
 
+  status:
+    # Static status page. The host-side electricpeak-status-collector timer
+    # writes status.json; this container has no Docker socket or host network.
+    image: nginxinc/nginx-unprivileged:1.29-alpine
+    container_name: status
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - /etc/nixos/containers/source/utilities/status/app:/usr/share/nginx/html:ro
+      - /etc/nixos/containers/source/utilities/status/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/lib/electricpeak-status:/srv/status-data:ro
+    networks:
+      - electricpeak
+    restart: unless-stopped
+
   contact-sync:
     # vdirsyncer 0.20.0 in the signed Vdirsyncer-DOCKERIZED 2.6.1 image.
     image: bleala/vdirsyncer:2.6.1@sha256:cbe4a492453b597fdeef996a7e1555c8da9208307efb2ec1e4a059cda6123b3d
