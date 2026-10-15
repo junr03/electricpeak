@@ -67,7 +67,7 @@
       "/run/onepassword-secrets/foodlogGoogleDriveToken:/run/secrets/google-drive-token.json:ro"
       "/var/lib/electricpeak/appdata/foodlog-sync:/data:rw"
     ];
-    cmd = [ "--write" "--poll-interval" "900" ];
+    cmd = [ "--write" "--poll-interval" "86400" ];
     user = "1000:100";
     log-driver = "journald";
     extraOptions = [
