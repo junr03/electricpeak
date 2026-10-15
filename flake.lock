@@ -21,6 +21,30 @@
         "type": "github"
       }
     },
+    "electricpeak-services": {
+      "inputs": {
+        "gallatin": [
+          "gallatin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791986462,
+        "narHash": "sha256-lpoiv3ULDifS86Dyz55eNmfuLnPMiQVWndVMoMMRWbU=",
+        "owner": "junr03",
+        "repo": "electricpeak-services",
+        "rev": "8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "junr03",
+        "repo": "electricpeak-services",
+        "rev": "8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -209,6 +233,7 @@
     "root": {
       "inputs": {
         "codex-cli-nix": "codex-cli-nix",
+        "electricpeak-services": "electricpeak-services",
         "gallatin": "gallatin",
         "gallatinRunners": "gallatinRunners",
         "home-manager": "home-manager",

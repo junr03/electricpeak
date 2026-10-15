@@ -38,6 +38,7 @@ in
     ./modules/photo-workflow/default.nix
     gallatinRunners.nixosModules.github-actions-runner
     ./containers/source/utilities/rawbackup/status.nix
+    ./containers/source/utilities/status/collector.nix
     ./containers/source/media/docker-compose.nix
     ./containers/source/networking/docker-compose.nix
     ./containers/source/observability/docker-compose.nix

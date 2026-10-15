@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, electricpeakServices, ... }:
 
 let
   localRoot = config.services.photoWorkflow.localRoot;
@@ -7,7 +7,7 @@ let
   externalRawSubdirectory = config.services.photoWorkflow.external.rawSubdirectory;
   internxtConfig = "/var/lib/photo-workflow/rclone.conf";
   statusCollector =
-    (import ../../../../rust/packages.nix { inherit pkgs; }).rawbackup-status-collector;
+    (electricpeakServices.lib.mkRawbackupPackages { inherit pkgs; }).rawbackup-status-collector;
 in
 {
   systemd.tmpfiles.rules = [
