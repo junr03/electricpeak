@@ -13,7 +13,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gallatin = {
-      url = "github:junr03/gallatin?rev=8de04a78e92fc959acfe18d55fcfe34050dcad15";
+      url = "github:junr03/gallatin?rev=307fc8000926510e9e7ed6c4d8bf6a6f270bdcc7";
       flake = false;
     };
     gallatinRunners.url = "github:junr03/gallatin?dir=runners&rev=e6ca46f2fe0c02a396142ffbfd1864f517453b85";
