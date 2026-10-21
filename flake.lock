@@ -60,17 +60,17 @@
     "gallatin": {
       "flake": false,
       "locked": {
-        "lastModified": 1792541280,
-        "narHash": "sha256-9DXjN1sk+vFHQ7CyLKgtIlohAGCfoX3fiyL6mtz48Q0=",
+        "lastModified": 1792543040,
+        "narHash": "sha256-sgSB9rZkwXxZuypWG5XkoOOysyY1l65Z+Hr9u4v3ZQE=",
         "owner": "junr03",
         "repo": "gallatin",
-        "rev": "face51c63cca82e63bcb792b478496d59c626b1b",
+        "rev": "68d279118b8904efa3f9e75428edce8ac8f0f986",
         "type": "github"
       },
       "original": {
         "owner": "junr03",
         "repo": "gallatin",
-        "rev": "face51c63cca82e63bcb792b478496d59c626b1b",
+        "rev": "68d279118b8904efa3f9e75428edce8ac8f0f986",
         "type": "github"
       }
     },
