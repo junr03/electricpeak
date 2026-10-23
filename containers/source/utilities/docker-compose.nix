@@ -147,6 +147,62 @@
       Restart = lib.mkOverride 90 "no";
     };
   };
+  virtualisation.oci-containers.containers."watchkeeper" = {
+    image = "ghcr.io/junr03/project-watchkeeper@sha256:5008834cc10afaf6f795baf7892414627b9fa61739545dee20d3fecc69a5c6cd";
+    environment = {
+      "WATCHKEEPER_ALLOWED_ORIGINS" = "http://127.0.0.1:8765";
+      "WATCHKEEPER_BIND_HOST" = "0.0.0.0";
+      "WATCHKEEPER_DATABASE" = "/var/lib/watchkeeper/watchkeeper.sqlite3";
+      "WATCHKEEPER_EMAIL_DIR" = "/var/lib/watchkeeper/email";
+      "WATCHKEEPER_INTAKE_TOKEN_FILE" = "/run/secrets/intake-token";
+      "WATCHKEEPER_MAIL_SENDER" = "watchkeeper-smoke@example.invalid";
+      "WATCHKEEPER_MAIL_TRANSPORT" = "file";
+      "WATCHKEEPER_PORT" = "8765";
+      "WATCHKEEPER_PRIVACY_JOURNAL" = "/var/lib/watchkeeper/privacy.jsonl";
+      "WATCHKEEPER_PROXY_MODE" = "ignore";
+      "WATCHKEEPER_PUBLIC_BASE_URL" = "http://127.0.0.1:8765";
+      "WATCHKEEPER_RECIPIENT" = "smoke-recipient@example.invalid";
+      "WATCHKEEPER_REVIEWER_TOKEN_FILE" = "/run/secrets/reviewer-token";
+      "WATCHKEEPER_UI_PASSWORD_FILE" = "/run/secrets/ui-password";
+      "WATCHKEEPER_UI_USERNAME_FILE" = "/run/secrets/ui-username";
+    };
+    volumes = [
+      "/var/lib/electricpeak/appdata/watchkeeper/secrets/intake-token:/run/secrets/intake-token:ro"
+      "/var/lib/electricpeak/appdata/watchkeeper/secrets/reviewer-token:/run/secrets/reviewer-token:ro"
+      "/var/lib/electricpeak/appdata/watchkeeper/secrets/ui-password:/run/secrets/ui-password:ro"
+      "/var/lib/electricpeak/appdata/watchkeeper/secrets/ui-username:/run/secrets/ui-username:ro"
+      "/var/lib/electricpeak/appdata/watchkeeper/state:/var/lib/watchkeeper:rw"
+    ];
+    ports = [
+      "127.0.0.1:8765:8765/tcp"
+    ];
+    labels = {
+      "compose2nix.settings.autoStart" = "false";
+      "compose2nix.systemd.service.ExecStop" = "/run/current-system/sw/bin/docker stop --time 180 watchkeeper";
+      "compose2nix.systemd.service.TimeoutStopSec" = "210";
+    };
+    user = "1000:2000";
+    log-driver = "journald";
+    autoStart = false;
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--health-cmd=python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8765/readyz\", timeout=2)'"
+      "--health-interval=10s"
+      "--health-retries=5"
+      "--health-start-period=10s"
+      "--health-timeout=3s"
+      "--network-alias=watchkeeper"
+      "--network=electricpeak"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-watchkeeper" = {
+    serviceConfig = {
+      ExecStop = lib.mkOverride 90 "/run/current-system/sw/bin/docker stop --time 180 watchkeeper";
+      Restart = lib.mkOverride 90 "no";
+      TimeoutStopSec = lib.mkOverride 90 210;
+    };
+  };
 
   # Root service
   # When started, this will automatically create all resources and start
