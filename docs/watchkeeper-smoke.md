@@ -76,11 +76,11 @@ sudo find /var/lib/watchkeeper-smoke/state/email -maxdepth 1 -type f -name '*.em
 The seeded `garden-guide` project should appear in the browser. Re-running the
 helper creates another synthetic intake cursor, refreshing source liveness.
 Fixture message IDs and revisions stay the same, so the repeat does not create
-new evidence or revise an existing assessment. User lifecycle choices remain
+new evidence or replace stored evidence. User lifecycle choices remain
 authoritative and can make the helper's eligibility assertion fail. If that
-happens, restore, reopen, or unsnooze the project in the UI before rerunning
-the smoke flow. The credentials are read privately by the helper and are not
-printed.
+happens, use **Restore** for an archived project or **Reopen** for a closed or
+snoozed project before rerunning the smoke flow. The credentials are read
+privately by the helper and are not printed.
 
 ## Stop, backup, and rollback
 
