@@ -1,13 +1,19 @@
 { lib, pkgs, ... }:
 let
-  image = "electricpeak-watchkeeper-smoke:7e31ce4aeafc";
-  source = pkgs.fetchFromGitHub {
-    owner = "junr03";
-    repo = "project-watchkeeper";
-    rev = "7e31ce4aeafca041f25b8262f6d76ba6fbd7966c";
-    hash = "sha256-pDMQn86JrGwiXzZgdPHq6a11kpi5b/4jJ5kNjTXa0NI=";
+  upstreamRevision = "d9fdc6be15455e0cb471dcbde5beb189640ba60f";
+  appImage = "ghcr.io/junr03/project-watchkeeper@sha256:5008834cc10afaf6f795baf7892414627b9fa61739545dee20d3fecc69a5c6cd";
+  reviewerImage = "ghcr.io/junr03/project-watchkeeper-reviewer@sha256:d0bbb1246f5539b2c143cc186f43ce53178cc914bced8c01a9a342b7fd27c377";
+  upstreamCompose = pkgs.fetchurl {
+    url = "https://raw.githubusercontent.com/junr03/project-watchkeeper/${upstreamRevision}/compose.yaml";
+    hash = "sha256-T60j5xdQx3Uy8V2115sylsCuQ372igfb1G6VPjN7bzc=";
   };
-  initCredentials = pkgs.writeShellScript "watchkeeper-smoke-init-credentials" ''
+  demoFixture = pkgs.fetchurl {
+    url = "https://raw.githubusercontent.com/junr03/project-watchkeeper/${upstreamRevision}/fixtures/codex-two-thread-demo.json";
+    hash = "sha256-tG1U4aUXLAXUy4hLdoGekLulza9l6WLBPseRDXnYv+M=";
+  };
+  composeDirectory = "/etc/electricpeak/watchkeeper-smoke";
+  composeCommand = "${pkgs.docker-compose}/bin/docker-compose --project-name watchkeeper-smoke --project-directory ${composeDirectory} --file ${composeDirectory}/compose.yaml --file ${composeDirectory}/compose.smoke.yaml";
+  initializeCredentials = pkgs.writeShellScript "watchkeeper-smoke-init-credentials" ''
     set -euo pipefail
     umask 077
     data=/var/lib/watchkeeper-smoke
@@ -37,77 +43,67 @@ let
     ensure_secret ui-username
     ensure_secret ui-password
   '';
+  startSmoke = pkgs.writeShellScript "watchkeeper-smoke-start" ''
+    set -euo pipefail
+    compose() { ${composeCommand} "$@"; }
+    if ! compose up --no-build --pull missing --no-deps --wait --wait-timeout 180 app; then
+      compose down --timeout 180 || true
+      exit 1
+    fi
+  '';
+  stopSmoke = pkgs.writeShellScript "watchkeeper-smoke-stop" ''
+    set -euo pipefail
+    ${composeCommand} down --timeout 180
+  '';
 in
 {
-  # The compose2nix generated module is updated by PR CI. Supplying the full
-  # image scalar here keeps public evaluation valid before that generated
-  # import contains the new service; generated env, volume, port and network
-  # fields merge into this manual, opt-in OCI container definition afterward.
-  virtualisation.oci-containers.containers.watchkeeper-smoke = {
-    inherit image;
-    pull = "never";
-    autoStart = false;
-    extraOptions = [
-      "--read-only"
-      "--stop-timeout=180"
-      "--tmpfs=/tmp:size=64m,mode=1777"
-      "--tmpfs=/run/watchkeeper/broker:rw,noexec,nosuid,size=1m,mode=0750,uid=1000,gid=2000"
-    ];
+  # Fetch only the upstream Compose contract and synthetic fixture. Published
+  # image digests avoid a host source build or an unpinned registry reference.
+  environment.etc."electricpeak/watchkeeper-smoke/compose.yaml" = {
+    source = upstreamCompose;
+    mode = "0444";
   };
-
-  systemd.services."docker-watchkeeper-smoke" = {
-    enable = true;
-    wantedBy = lib.mkForce [ ];
-    partOf = lib.mkForce [ ];
-    requires = [ "watchkeeper-smoke-build.service" "watchkeeper-smoke-credentials.service" ];
-    after = [ "watchkeeper-smoke-build.service" "watchkeeper-smoke-credentials.service" ];
-    unitConfig.StartLimitIntervalSec = 0;
-    serviceConfig = {
-      Restart = lib.mkForce "no";
-      TimeoutStopSec = lib.mkForce "210s";
-    };
+  environment.etc."electricpeak/watchkeeper-smoke/compose.smoke.yaml" = {
+    source = ../../containers/source/utilities/watchkeeper-smoke/compose.smoke.yaml;
+    mode = "0444";
   };
-
-  # The generated Compose module normally attaches this bridge to the shared
-  # root target. Keep it opt-in with the app; starting the app will pull it in
-  # through the generated container's network dependency.
-  systemd.services."docker-network-watchkeeper-smoke" = {
-    wantedBy = lib.mkForce [ ];
-    partOf = lib.mkForce [ ];
+  environment.etc."electricpeak/watchkeeper-smoke/codex-two-thread-demo.json" = {
+    source = demoFixture;
+    mode = "0444";
   };
-
-  systemd.services.watchkeeper-smoke-build = {
-    description = "Build the pinned public Watchkeeper smoke-test image";
-    requires = [ "docker.service" ];
-    after = [ "docker.service" ];
-    path = [ pkgs.docker ];
-    script = ''
-      if ! docker image inspect ${lib.escapeShellArg image} >/dev/null 2>&1; then
-        docker build --network=none --file ${source}/Dockerfile --tag ${lib.escapeShellArg image} ${source}
-      fi
-    '';
-    serviceConfig = {
-      Type = "oneshot";
-      TimeoutStartSec = "30min";
-    };
-  };
-
-  systemd.services.watchkeeper-smoke-credentials = {
-    description = "Create persistent local-only Watchkeeper smoke credentials";
-    path = [ pkgs.coreutils ];
-    script = "${initCredentials}";
-    serviceConfig = {
-      Type = "oneshot";
-    };
-  };
-
-  environment.systemPackages = [ pkgs.curl pkgs.jq ];
   environment.etc."electricpeak/watchkeeper-smoke/seed-demo.sh" = {
     source = ./seed-demo.sh;
     mode = "0555";
   };
-  environment.etc."electricpeak/watchkeeper-smoke/codex-two-thread-demo.json" = {
-    source = "${source}/fixtures/codex-two-thread-demo.json";
-    mode = "0444";
+
+  environment.systemPackages = [ pkgs.curl pkgs.jq ];
+
+  systemd.services.watchkeeper-smoke-credentials = {
+    description = "Create persistent local-only Watchkeeper smoke credentials";
+    path = [ pkgs.coreutils ];
+    script = "${initializeCredentials}";
+    serviceConfig.Type = "oneshot";
+  };
+
+  systemd.services.watchkeeper-smoke = {
+    description = "Run the Watchkeeper local smoke test using pinned upstream Compose";
+    wantedBy = lib.mkForce [ ];
+    partOf = lib.mkForce [ ];
+    requires = [ "docker.service" "watchkeeper-smoke-credentials.service" ];
+    after = [ "docker.service" "watchkeeper-smoke-credentials.service" ];
+    environment = {
+      WATCHKEEPER_IMAGE = appImage;
+      WATCHKEEPER_REVIEWER_IMAGE = reviewerImage;
+    };
+    path = [ pkgs.docker-compose ];
+    script = "${startSmoke}";
+    preStop = "${stopSmoke}";
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      TimeoutStartSec = "15min";
+      TimeoutStopSec = "210s";
+    };
   };
 }

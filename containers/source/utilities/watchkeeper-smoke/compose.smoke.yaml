@@ -1,0 +1,46 @@
+# Overlay for the pinned upstream Compose file. Requires Docker Compose 2.24.4+
+# for !reset and !override. The systemd unit starts only the app service.
+services:
+  app:
+    image: ${WATCHKEEPER_IMAGE}
+    container_name: watchkeeper-smoke
+    restart: "no"
+    stop_grace_period: 3m
+    environment:
+      WATCHKEEPER_INTAKE_TOKEN: !reset null
+      WATCHKEEPER_REVIEWER_TOKEN: !reset null
+      WATCHKEEPER_UI_USERNAME: !reset null
+      WATCHKEEPER_UI_PASSWORD: !reset null
+      WATCHKEEPER_INTAKE_TOKEN_FILE: /run/secrets/intake-token
+      WATCHKEEPER_REVIEWER_TOKEN_FILE: /run/secrets/reviewer-token
+      WATCHKEEPER_UI_USERNAME_FILE: /run/secrets/ui-username
+      WATCHKEEPER_UI_PASSWORD_FILE: /run/secrets/ui-password
+      WATCHKEEPER_DATABASE: /var/lib/watchkeeper/watchkeeper.sqlite3
+      WATCHKEEPER_EMAIL_DIR: /var/lib/watchkeeper/email
+      WATCHKEEPER_PRIVACY_JOURNAL: /var/lib/watchkeeper/privacy.jsonl
+      WATCHKEEPER_RECIPIENT: smoke-recipient@example.invalid
+      WATCHKEEPER_MAIL_SENDER: watchkeeper-smoke@example.invalid
+      WATCHKEEPER_MAIL_TRANSPORT: file
+      WATCHKEEPER_PUBLIC_BASE_URL: http://127.0.0.1:8765
+      WATCHKEEPER_ALLOWED_ORIGINS: http://127.0.0.1:8765
+      WATCHKEEPER_BIND_HOST: 0.0.0.0
+      WATCHKEEPER_PORT: "8765"
+      WATCHKEEPER_PROXY_MODE: ignore
+    volumes: !override
+      - /var/lib/watchkeeper-smoke/state:/var/lib/watchkeeper
+      - /var/lib/watchkeeper-smoke/secrets/intake-token:/run/secrets/intake-token:ro
+      - /var/lib/watchkeeper-smoke/secrets/reviewer-token:/run/secrets/reviewer-token:ro
+      - /var/lib/watchkeeper-smoke/secrets/ui-username:/run/secrets/ui-username:ro
+      - /var/lib/watchkeeper-smoke/secrets/ui-password:/run/secrets/ui-password:ro
+    ports: !override
+      - "127.0.0.1:8765:8765"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /run/watchkeeper/broker:rw,noexec,nosuid,size=1m,mode=0750,uid=1000,gid=2000
+    networks: !override
+      - watchkeeper-smoke
+
+networks:
+  watchkeeper-smoke:
+    name: watchkeeper-smoke
+    driver: bridge

@@ -24,55 +24,6 @@ services:
     networks:
       - electricpeak
 
-  watchkeeper-smoke:
-    # Built on the host from the pinned public Watchkeeper source by the
-    # watchkeeper-smoke-build.service. This remains an opt-in local smoke app.
-    image: electricpeak-watchkeeper-smoke:7e31ce4aeafc
-    container_name: watchkeeper-smoke
-    user: "1000:2000"
-    restart: "no"
-    stop_grace_period: 3m
-    labels:
-      - "compose2nix.settings.autoStart=false"
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    tmpfs:
-      - /tmp:size=64m,mode=1777
-      - /run/watchkeeper/broker:rw,noexec,nosuid,size=1m,mode=0750,uid=1000,gid=2000
-    environment:
-      WATCHKEEPER_INTAKE_TOKEN_FILE: /run/secrets/intake-token
-      WATCHKEEPER_REVIEWER_TOKEN_FILE: /run/secrets/reviewer-token
-      WATCHKEEPER_UI_USERNAME_FILE: /run/secrets/ui-username
-      WATCHKEEPER_UI_PASSWORD_FILE: /run/secrets/ui-password
-      WATCHKEEPER_DATABASE: /var/lib/watchkeeper/watchkeeper.sqlite3
-      WATCHKEEPER_EMAIL_DIR: /var/lib/watchkeeper/email
-      WATCHKEEPER_PRIVACY_JOURNAL: /var/lib/watchkeeper/privacy.jsonl
-      WATCHKEEPER_RECIPIENT: smoke-recipient@example.invalid
-      WATCHKEEPER_MAIL_SENDER: watchkeeper-smoke@example.invalid
-      WATCHKEEPER_MAIL_TRANSPORT: file
-      WATCHKEEPER_PUBLIC_BASE_URL: http://127.0.0.1:8765
-      WATCHKEEPER_ALLOWED_ORIGINS: http://127.0.0.1:8765
-      WATCHKEEPER_BIND_HOST: 0.0.0.0
-      WATCHKEEPER_PORT: "8765"
-      WATCHKEEPER_PROXY_MODE: ignore
-    volumes:
-      - /var/lib/watchkeeper-smoke/state:/var/lib/watchkeeper
-      - /var/lib/watchkeeper-smoke/secrets/intake-token:/run/secrets/intake-token:ro
-      - /var/lib/watchkeeper-smoke/secrets/reviewer-token:/run/secrets/reviewer-token:ro
-      - /var/lib/watchkeeper-smoke/secrets/ui-username:/run/secrets/ui-username:ro
-      - /var/lib/watchkeeper-smoke/secrets/ui-password:/run/secrets/ui-password:ro
-    ports:
-      - "127.0.0.1:8765:8765"
-    networks:
-      - watchkeeper-smoke
-    healthcheck:
-      test: [CMD-SHELL, "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8765/readyz\", timeout=2)'"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
-
   rawbackup:
     image: python:3.13-alpine
     container_name: rawbackup
@@ -135,6 +86,3 @@ networks:
   electricpeak:
     name: electricpeak
     external: true
-  watchkeeper-smoke:
-    name: watchkeeper-smoke
-    driver: bridge
