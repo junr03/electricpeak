@@ -21,6 +21,8 @@ let
     "docker-gluetun"
     "docker-homarr"
     "docker-homeassistant"
+    "docker-jellystat"
+    "docker-jellystat-db"
     "docker-lazylibrarian"
     "docker-lazylibrarian-init"
     "docker-mousehole"
@@ -271,6 +273,23 @@ in
         group = "root";
         mode = "0400";
         services = [ "docker-homarr" ];
+      };
+      jellystatPostgresPassword = {
+        reference = "op://electricpeak/nixos/jellystat-postgres-password";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+        services = [
+          "docker-jellystat"
+          "docker-jellystat-db"
+        ];
+      };
+      jellystatJwtSecret = {
+        reference = "op://electricpeak/nixos/jellystat-jwt-secret";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+        services = [ "docker-jellystat" ];
       };
       junr03AuthorizedKeys = {
         reference = "op://electricpeak/nixos/junr03-authorized-keys.txt";
