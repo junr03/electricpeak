@@ -177,6 +177,86 @@
       "docker-compose-electricpeak-root.target"
     ];
   };
+  virtualisation.oci-containers.containers."jellystat" = {
+    image = "cyfershepard/jellystat:latest";
+    environment = {
+      "FILE__JWT_SECRET" = "/run/secrets/jellystat-jwt-secret";
+      "FILE__POSTGRES_PASSWORD" = "/run/secrets/jellystat-postgres-password";
+      "POSTGRES_DB" = "jfstat";
+      "POSTGRES_IP" = "jellystat-db";
+      "POSTGRES_PORT" = "5432";
+      "POSTGRES_USER" = "postgres";
+      "TZ" = "America/Los_Angeles";
+    };
+    volumes = [
+      "/run/onepassword-secrets/jellystatJwtSecret:/run/secrets/jellystat-jwt-secret:ro"
+      "/run/onepassword-secrets/jellystatPostgresPassword:/run/secrets/jellystat-postgres-password:ro"
+      "/var/lib/electricpeak/appdata/jellystat/backup-data:/app/backend/backup-data:rw"
+    ];
+    dependsOn = [
+      "jellystat-db"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--health-cmd=wget --no-verbose --tries=1 --spider http://localhost:3000/auth/isConfigured || exit 1"
+      "--health-interval=1m0s"
+      "--health-retries=5"
+      "--health-start-period=30s"
+      "--health-timeout=30s"
+      "--network-alias=jellystat"
+      "--network=electricpeak"
+    ];
+  };
+  systemd.services."docker-jellystat" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."jellystat-db" = {
+    image = "postgres:18.1";
+    environment = {
+      "POSTGRES_DB" = "jfstat";
+      "POSTGRES_PASSWORD_FILE" = "/run/secrets/jellystat-postgres-password";
+      "POSTGRES_USER" = "postgres";
+    };
+    volumes = [
+      "/run/onepassword-secrets/jellystatPostgresPassword:/run/secrets/jellystat-postgres-password:ro"
+      "/var/lib/electricpeak/appdata/jellystat/postgres:/var/lib/postgresql:rw"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--health-cmd=pg_isready --dbname=jfstat --username=postgres"
+      "--health-interval=10s"
+      "--health-retries=5"
+      "--health-timeout=5s"
+      "--network-alias=jellystat-db"
+      "--network=electricpeak"
+      "--shm-size=1073741824"
+    ];
+  };
+  systemd.services."docker-jellystat-db" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
   virtualisation.oci-containers.containers."lazylibrarian" = {
     image = "lscr.io/linuxserver/lazylibrarian:latest";
     environment = {
