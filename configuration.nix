@@ -100,6 +100,24 @@ in
           "zerotierone"
         ];
     }
+    (lib.mkIf usePrivateSystemConfiguration {
+      # Gallatin runner scripts use a /bin/bash shebang, which is unavailable
+      # on NixOS. Invoke each enabled runner with the pinned Bash executable.
+      systemd.services =
+        let
+          runnerNames = builtins.attrNames (
+            lib.filterAttrs (_: runner: runner.enable)
+              config.services.gallatin.githubActionsRunners
+          );
+        in
+        lib.genAttrs
+          (map (name: "gallatin-github-runner-${name}") runnerNames)
+          (_: {
+            script = lib.mkForce ''
+              exec ${pkgs.bash}/bin/bash ./run.sh
+            '';
+          });
+    })
     (lib.mkIf (!requirePrivateSystemConfiguration) {
       # Generic public defaults. The production target imports the private
       # configuration separately.
