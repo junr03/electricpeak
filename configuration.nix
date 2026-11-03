@@ -99,7 +99,17 @@ in
           "1password-cli"
           "zerotierone"
         ];
+
+      # Provide the conventional interpreter path for upstream scripts that use
+      # a /bin/bash shebang.
+      system.activationScripts.binbash = {
+        deps = [ "binsh" ];
+        text = ''
+          ln -sfn ${pkgs.bash}/bin/bash /bin/bash
+        '';
+      };
     }
+
     (lib.mkIf (!requirePrivateSystemConfiguration) {
       # Generic public defaults. The production target imports the private
       # configuration separately.
