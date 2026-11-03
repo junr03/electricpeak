@@ -31,11 +31,13 @@ configuration has been assembled at `private-config/`.
 
 ## Production configuration
 
-After all GitHub-hosted checks pass, a push to protected `main` checks out the
-tip of `junr03/electricpeak-sensitive` at `private-config/`, builds the exact
-assembled source on the server, and activates that build. The private directory
-is ignored and is never committed to this repository. The production
-`electricpeak` flake target is available only when that configuration exists.
+The checked-in `.github/private-config.rev` pins the private source commit. A
+push to protected `main` checks out exactly that revision at `private-config/`,
+builds the assembled source on the server, and activates that build. Update the
+pin in a reviewed public PR when the private configuration changes. The
+assembled private directory is ignored and is never committed to this repository.
+The production `electricpeak` flake target is available only when that
+configuration exists.
 Use a path flake so Nix includes the separately assembled private directory:
 
 ```sh
