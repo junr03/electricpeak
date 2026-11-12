@@ -18,7 +18,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gallatin = {
-      url = "github:junr03/gallatin?rev=307fc8000926510e9e7ed6c4d8bf6a6f270bdcc7";
+      url = "github:junr03/gallatin?rev=10f120830b36b1f5543966c01a61f63b626a3bec";
       flake = false;
     };
     gallatinRunners.url = "github:junr03/gallatin?dir=runners&rev=e6ca46f2fe0c02a396142ffbfd1864f517453b85";
@@ -73,10 +73,12 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs.gallatin = inputs.gallatin;
               home-manager.users = {
                 junr03 = {
                   imports = [
                     ./users/junr03/default.nix
+                    "${inputs.gallatin}/herdr/home-manager.nix"
                     "${inputs.gallatin}/skills"
                   ];
                 };
