@@ -1,10 +1,9 @@
 # Every package installed directly by this repository, in one place.
 #
-# Entries are `{ name = <package>; }` with optional `profiles = [ ... ]` to
-# restrict them, and `unfree = true` to add the package to the unfree
-# allowlist automatically. This module is shared by the public and production
-# targets, so a package listed here reaches the server. Do not install packages
-# from a public-only branch of configuration.nix.
+# Entries are `{ name = <package>; }`. Set `unfree = true` to add the package to
+# the unfree allowlist automatically. This module is shared by the public and
+# production targets, so a package listed here reaches the server. Do not
+# install packages from the public-only arm of configuration.nix.
 #
 # Packages built by a service module for its own use (for example the
 # 1Password helpers in modules/onepassword-secrets) stay with that module.
@@ -12,12 +11,9 @@
   lib,
   pkgs,
   self,
-  profile,
 }:
 let
-  inherit (import ./profile-packages.nix { inherit lib; }) select unfreeNames;
-
-  systemEntries = with pkgs; [
+  entries = with pkgs; [
     # Development and AI tooling
     { name = self.packages.${pkgs.stdenv.hostPlatform.system}.codex; }
     {
@@ -35,23 +31,10 @@ let
     { name = curl; }
     { name = git; }
     { name = jq; }
-  ];
-
-  userEntries = with pkgs; [
     { name = tree; }
   ];
 in
 {
-  system = select {
-    inherit profile;
-    entries = systemEntries;
-  };
-  user = select {
-    inherit profile;
-    entries = userEntries;
-  };
-  unfree = unfreeNames {
-    inherit profile;
-    entries = systemEntries ++ userEntries;
-  };
+  system = map (entry: entry.name) entries;
+  unfree = map (entry: lib.getName entry.name) (lib.filter (entry: entry.unfree or false) entries);
 }

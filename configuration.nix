@@ -29,10 +29,7 @@ let
   hasPrivateSystemConfiguration = privateSystemConfiguration != null;
   usePrivateSystemConfiguration =
     requirePrivateSystemConfiguration && hasPrivateSystemConfiguration;
-  packages = import ./modules/packages.nix {
-    inherit lib pkgs self;
-    profile = "electricpeak";
-  };
+  packages = import ./modules/packages.nix { inherit lib pkgs self; };
 in
 {
   imports = [
@@ -112,7 +109,6 @@ in
 
       # Shared by the public and production targets.
       environment.systemPackages = packages.system;
-      users.users.junr03.packages = packages.user;
 
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
