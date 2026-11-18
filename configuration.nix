@@ -98,6 +98,7 @@ in
         builtins.elem (lib.getName pkg) [
           "1password-cli"
           "claude-code"
+          "plaid-cli"
           "zerotierone"
         ];
 
@@ -147,6 +148,7 @@ in
 
       environment.systemPackages = with pkgs; [
         self.packages.${pkgs.stdenv.hostPlatform.system}.codex
+        (pkgs.callPackage ./packages/plaid-cli.nix { })
         compose2nix
         curl
         git
