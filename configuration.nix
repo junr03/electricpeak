@@ -97,8 +97,11 @@ in
         pkg:
         builtins.elem (lib.getName pkg) [
           "1password-cli"
+          "claude-code"
           "zerotierone"
         ];
+
+      environment.systemPackages = [ pkgs.claude-code ];
 
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
