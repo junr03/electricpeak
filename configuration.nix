@@ -29,6 +29,10 @@ let
   hasPrivateSystemConfiguration = privateSystemConfiguration != null;
   usePrivateSystemConfiguration =
     requirePrivateSystemConfiguration && hasPrivateSystemConfiguration;
+  packages = import ./modules/packages.nix {
+    inherit lib pkgs self;
+    profile = "electricpeak";
+  };
 in
 {
   imports = [
@@ -93,16 +97,22 @@ in
       users.users.junr03.home = "/home/junr03";
       users.users.github-actions.home = "/home/github-actions";
 
+      # Unfree packages from modules/packages.nix are allowed automatically.
+      # The rest are installed outside that module: 1password-cli by
+      # modules/onepassword-secrets and zerotierone from the zerotier input.
       nixpkgs.config.allowUnfreePredicate =
         pkg:
-        builtins.elem (lib.getName pkg) [
-          "1password-cli"
-          "claude-code"
-          "plaid-cli"
-          "zerotierone"
-        ];
+        builtins.elem (lib.getName pkg) (
+          packages.unfree
+          ++ [
+            "1password-cli"
+            "zerotierone"
+          ]
+        );
 
-      environment.systemPackages = [ pkgs.claude-code ];
+      # Shared by the public and production targets.
+      environment.systemPackages = packages.system;
+      users.users.junr03.packages = packages.user;
 
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
@@ -131,7 +141,6 @@ in
             "networkmanager"
             "docker"
           ];
-          packages = with pkgs; [ tree ];
         };
 
         github-actions = {
@@ -145,15 +154,6 @@ in
       };
 
       security.polkit.enable = true;
-
-      environment.systemPackages = with pkgs; [
-        self.packages.${pkgs.stdenv.hostPlatform.system}.codex
-        (pkgs.callPackage ./packages/plaid-cli.nix { })
-        compose2nix
-        curl
-        git
-        jq
-      ];
 
       virtualisation.docker.enable = true;
       virtualisation.oci-containers.backend = "docker";
