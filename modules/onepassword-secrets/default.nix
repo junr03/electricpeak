@@ -473,6 +473,8 @@ in
     "d /var/lib/electricpeak/appdata/foodlog-sync 0750 1000 100 - -"
   ];
 
+  electricpeak.unfreePackages = [ "1password-cli" ];
+
   environment.systemPackages = [ bootstrap configEditor ghcrLogin pkgs._1password-cli ]
     ++ lib.optional hasCertificates acmeCertificateHealthCheck;
 

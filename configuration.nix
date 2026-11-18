@@ -29,11 +29,11 @@ let
   hasPrivateSystemConfiguration = privateSystemConfiguration != null;
   usePrivateSystemConfiguration =
     requirePrivateSystemConfiguration && hasPrivateSystemConfiguration;
-  packages = import ./modules/packages.nix { inherit lib pkgs self; };
 in
 {
   imports = [
     ./modules/onepassword-secrets/default.nix
+    ./modules/packages.nix
     ./modules/kindle-gmail/default.nix
     ./modules/substack-digest/default.nix
     ./modules/photo-workflow/default.nix
@@ -93,22 +93,6 @@ in
       # private system module is intentionally absent during public checks.
       users.users.junr03.home = "/home/junr03";
       users.users.github-actions.home = "/home/github-actions";
-
-      # Unfree packages from modules/packages.nix are allowed automatically.
-      # The rest are installed outside that module: 1password-cli by
-      # modules/onepassword-secrets and zerotierone from the zerotier input.
-      nixpkgs.config.allowUnfreePredicate =
-        pkg:
-        builtins.elem (lib.getName pkg) (
-          packages.unfree
-          ++ [
-            "1password-cli"
-            "zerotierone"
-          ]
-        );
-
-      # Shared by the public and production targets.
-      environment.systemPackages = packages.system;
 
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.

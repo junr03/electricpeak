@@ -11,6 +11,10 @@ let
     ++ lib.optional config.services.zerotierone.enable config.services.zerotierone.package;
 in
 {
+  # The collector reports on ZeroTier when it is enabled, which needs its
+  # unfree package.
+  electricpeak.unfreePackages = lib.optional config.services.zerotierone.enable "zerotierone";
+
   systemd.tmpfiles.rules = [
     "d /var/lib/electricpeak-status 0755 root root - -"
   ];
