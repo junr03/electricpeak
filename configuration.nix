@@ -33,6 +33,7 @@ in
 {
   imports = [
     ./modules/onepassword-secrets/default.nix
+    ./modules/packages.nix
     ./modules/kindle-gmail/default.nix
     ./modules/substack-digest/default.nix
     ./modules/photo-workflow/default.nix
@@ -93,17 +94,6 @@ in
       users.users.junr03.home = "/home/junr03";
       users.users.github-actions.home = "/home/github-actions";
 
-      nixpkgs.config.allowUnfreePredicate =
-        pkg:
-        builtins.elem (lib.getName pkg) [
-          "1password-cli"
-          "claude-code"
-          "plaid-cli"
-          "zerotierone"
-        ];
-
-      environment.systemPackages = [ pkgs.claude-code ];
-
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
       system.activationScripts.binbash = {
@@ -131,7 +121,6 @@ in
             "networkmanager"
             "docker"
           ];
-          packages = with pkgs; [ tree ];
         };
 
         github-actions = {
@@ -145,15 +134,6 @@ in
       };
 
       security.polkit.enable = true;
-
-      environment.systemPackages = with pkgs; [
-        self.packages.${pkgs.stdenv.hostPlatform.system}.codex
-        (pkgs.callPackage ./packages/plaid-cli.nix { })
-        compose2nix
-        curl
-        git
-        jq
-      ];
 
       virtualisation.docker.enable = true;
       virtualisation.oci-containers.backend = "docker";

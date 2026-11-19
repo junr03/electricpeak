@@ -32,6 +32,7 @@ with the existing Nix modules.
 
 ## Nix and configuration changes
 
+- Install packages by adding an entry to `modules/packages.nix` (alphabetical; set `unfree = true` for unfree ones). A module that installs or enables its own unfree package adds its name to `electricpeak.unfreePackages` instead. That module feeds the shared config arm used by both the public and production targets. Never add `environment.systemPackages` inside the `!requirePrivateSystemConfiguration` arm of `configuration.nix`; production does not evaluate it.
 - Keep flake inputs pinned. Change `flake.nix` and use `nix flake update` when
   updating dependencies; do not edit `flake.lock` by hand.
 - This is a public repository. Put production hostnames, private IP addresses,
