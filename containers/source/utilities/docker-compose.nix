@@ -89,8 +89,123 @@
       "docker-compose-electricpeak-root.target"
     ];
   };
+  virtualisation.oci-containers.containers."opendashboards" = {
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:b16db0a6c0b99f5d6b5925c60219ff42b7cbf7925ac4031baffeb8d8154633fa";
+    environment = {
+      "APP_ORIGIN" = "https://dashboards.example.invalid";
+    };
+    volumes = [
+      "/run/onepassword-secrets/thesysApiKey:/run/secrets/thesys-api-key:ro"
+      "/var/lib/opendashboards/state:/data:ro"
+    ];
+    dependsOn = [
+      "opendashboards-db"
+      "opendashboards-init"
+    ];
+    user = "1000:100";
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--network-alias=opendashboards"
+      "--network=electricpeak"
+      "--network=opendashboards-db"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-opendashboards" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    after = [
+      "docker-network-opendashboards-db.service"
+    ];
+    requires = [
+      "docker-network-opendashboards-db.service"
+    ];
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."opendashboards-db" = {
+    image = "postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73";
+    environment = {
+      "POSTGRES_DB" = "opendashboards";
+      "POSTGRES_PASSWORD_FILE" = "/run/secrets/database-password";
+      "POSTGRES_USER" = "opendashboards";
+    };
+    volumes = [
+      "/var/lib/opendashboards/state/database-password:/run/secrets/database-password:ro"
+      "opendashboards-postgres:/var/lib/postgresql/data:rw"
+    ];
+    dependsOn = [
+      "opendashboards-init"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--health-cmd=pg_isready -h 127.0.0.1 -U opendashboards -d opendashboards"
+      "--health-interval=5s"
+      "--health-retries=12"
+      "--health-timeout=5s"
+      "--network-alias=opendashboards-db"
+      "--network=opendashboards-db"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-opendashboards-db" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    after = [
+      "docker-network-opendashboards-db.service"
+      "docker-volume-opendashboards-postgres.service"
+    ];
+    requires = [
+      "docker-network-opendashboards-db.service"
+      "docker-volume-opendashboards-postgres.service"
+    ];
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."opendashboards-init" = {
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:b16db0a6c0b99f5d6b5925c60219ff42b7cbf7925ac4031baffeb8d8154633fa";
+    volumes = [
+      "/var/lib/opendashboards/state:/data:rw"
+    ];
+    cmd = [ "init" ];
+    user = "1000:100";
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--network=none"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-opendashboards-init" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "no";
+    };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
   virtualisation.oci-containers.containers."rawbackup" = {
-    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:2775cb81d7cd57e70bc64f0d7d4e9dd6a48705dbcca0ca9bed363b0ebe86b5ce";
+    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:d6f96deeefe1b1aab3835a6b1b0790d59735d27c3d84d689b80691e99fb56c4c";
     volumes = [
       "/var/lib/rawbackup:/data:ro"
       "/var/lib/rawbackup/reconcile:/reconcile:rw"
@@ -116,7 +231,7 @@
     ];
   };
   virtualisation.oci-containers.containers."status" = {
-    image = "ghcr.io/junr03/electricpeak-services/status@sha256:99957a267a722fefb0af9f6cfc4b73ebfbc51288c015049d7d3186be0aaca06d";
+    image = "ghcr.io/junr03/electricpeak-services/status@sha256:3b06a015ede0f6190bf77c6f5cf727bdb503498b06e6bc5379fa467d0baa7bfd";
     volumes = [
       "/var/lib/electricpeak-status:/srv/status-data:ro"
     ];
@@ -143,7 +258,7 @@
     ];
   };
   virtualisation.oci-containers.containers."substack-digest" = {
-    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:1ca5b960d09df62f4a0d466ec06fe1ba4fcc66b16fe58caa17a2c04a34b19039";
+    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:2c3c6f198b41261b15d2c3e989edc37e0a033e809bedd9e5f1cbe4f320821459";
     environment = {
       "RMAPI_CONFIG_DIR" = "/data/rmapi";
     };
@@ -171,6 +286,35 @@
     serviceConfig = {
       Restart = lib.mkOverride 90 "no";
     };
+  };
+
+  # Networks
+  systemd.services."docker-network-opendashboards-db" = {
+    path = [ pkgs.docker ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStop = "docker network rm -f opendashboards-db";
+    };
+    script = ''
+      docker network inspect opendashboards-db || docker network create opendashboards-db --internal
+    '';
+    partOf = [ "docker-compose-electricpeak-root.target" ];
+    wantedBy = [ "docker-compose-electricpeak-root.target" ];
+  };
+
+  # Volumes
+  systemd.services."docker-volume-opendashboards-postgres" = {
+    path = [ pkgs.docker ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      docker volume inspect opendashboards-postgres || docker volume create opendashboards-postgres
+    '';
+    partOf = [ "docker-compose-electricpeak-root.target" ];
+    wantedBy = [ "docker-compose-electricpeak-root.target" ];
   };
 
   # Root service

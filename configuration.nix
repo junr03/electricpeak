@@ -36,6 +36,7 @@ in
     ./modules/packages.nix
     ./modules/kindle-gmail/default.nix
     ./modules/substack-digest/default.nix
+    ./modules/opendashboards/default.nix
     ./modules/photo-workflow/default.nix
     gallatinRunners.nixosModules.github-actions-runner
     ./containers/source/utilities/rawbackup/status.nix

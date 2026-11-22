@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     electricpeak-services = {
-      url = "github:junr03/electricpeak-services/8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e";
+      url = "github:junr03/electricpeak-services/563cd416524a8f2ea7f52e9bd06de5cb27b5ba68";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gallatin.follows = "gallatin";
     };
@@ -121,6 +121,7 @@
             # Exercise every custom service even though the sanitized host leaves
             # optional workflows disabled. This check is never activated.
             services.substackDigest.enable = true;
+            services.opendashboards.enable = true;
             services.photoWorkflow = {
               enable = true;
               external.enable = true;

@@ -31,17 +31,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1791986462,
-        "narHash": "sha256-lpoiv3ULDifS86Dyz55eNmfuLnPMiQVWndVMoMMRWbU=",
+        "lastModified": 1795367483,
+        "narHash": "sha256-zEjU7vU9CNnMISHo2g1YQh/hxCYQzWz2LKwOlUXXZmI=",
         "owner": "junr03",
         "repo": "electricpeak-services",
-        "rev": "8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e",
+        "rev": "563cd416524a8f2ea7f52e9bd06de5cb27b5ba68",
         "type": "github"
       },
       "original": {
         "owner": "junr03",
         "repo": "electricpeak-services",
-        "rev": "8ecd9486117d5be5d586287e0f1d3ce03e8d9c9e",
+        "rev": "563cd416524a8f2ea7f52e9bd06de5cb27b5ba68",
         "type": "github"
       }
     },
