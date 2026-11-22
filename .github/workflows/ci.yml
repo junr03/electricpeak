@@ -90,6 +90,9 @@ jobs:
             generated-compose-artifact/artifact-root.txt
             generated-compose-artifact/containers/source/**/docker-compose.nix
           if-no-files-found: error
+      - name: Use generated Compose modules for pull request validation
+        if: github.event_name == 'pull_request'
+        run: cp -R generated-compose-artifact/containers/source/. containers/source/
       - name: Check committed Compose modules are current
         if: github.event_name != 'pull_request'
         run: git diff --exit-code -- containers/source/
