@@ -1,8 +1,72 @@
 # Re-evaluate.
 services:
+  opendashboards:
+    # Production adapters and packaging are maintained in electricpeak-services.
+    image: &opendashboards-image ghcr.io/junr03/electricpeak-services/opendashboards@sha256:69e42853d65cb28d9b36b912044abed80e611a45e816285ea337d1a5a4061f1e
+    container_name: opendashboards
+    user: "1000:100"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:mode=1777
+      - /app/.next/cache:uid=1000,gid=100
+    environment:
+      # The private Nix module overrides this with the external HTTPS origin.
+      - APP_ORIGIN=https://dashboards.example.invalid
+    volumes:
+      - /var/lib/opendashboards/state:/data:ro
+      - /run/onepassword-secrets/thesysApiKey:/run/secrets/thesys-api-key:ro
+    depends_on:
+      opendashboards-init:
+        condition: service_completed_successfully
+      opendashboards-db:
+        condition: service_healthy
+    networks:
+      - electricpeak
+      - opendashboards-db
+    restart: unless-stopped
+
+  opendashboards-init:
+    image: *opendashboards-image
+    container_name: opendashboards-init
+    user: "1000:100"
+    command: ["init"]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - /var/lib/opendashboards/state:/data
+    restart: "no"
+
+  opendashboards-db:
+    image: postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+    container_name: opendashboards-db
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      - POSTGRES_USER=opendashboards
+      - POSTGRES_DB=opendashboards
+      - POSTGRES_PASSWORD_FILE=/run/secrets/database-password
+    volumes:
+      - opendashboards-postgres:/var/lib/postgresql/data
+      - /var/lib/opendashboards/state/database-password:/run/secrets/database-password:ro
+    depends_on:
+      opendashboards-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U opendashboards -d opendashboards"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - opendashboards-db
+    restart: unless-stopped
+
   substack-digest:
     # Published and tested independently in electricpeak-services.
-    image: ghcr.io/junr03/electricpeak-services/substack-digest@sha256:1ca5b960d09df62f4a0d466ec06fe1ba4fcc66b16fe58caa17a2c04a34b19039
+    image: ghcr.io/junr03/electricpeak-services/substack-digest@sha256:2719a93b21d0f3a31d98861dc9d338ef2f7f76403be6bed8ea3a1b2661403373
     container_name: substack-digest
     user: "1000:100"
     restart: "no"
@@ -25,7 +89,7 @@ services:
       - electricpeak
 
   rawbackup:
-    image: ghcr.io/junr03/electricpeak-services/rawbackup@sha256:2775cb81d7cd57e70bc64f0d7d4e9dd6a48705dbcca0ca9bed363b0ebe86b5ce
+    image: ghcr.io/junr03/electricpeak-services/rawbackup@sha256:bdc6c4f1f6aebd365899011e118017871589e60c950e5c8017832b0b9687045d
     container_name: rawbackup
     volumes:
       - /var/lib/rawbackup:/data:ro
@@ -38,7 +102,7 @@ services:
     # Static status page, published and tested in electricpeak-services. The
     # host-side electricpeak-status-collector timer writes status.json; this
     # container has no Docker socket, host network, or capabilities.
-    image: ghcr.io/junr03/electricpeak-services/status@sha256:99957a267a722fefb0af9f6cfc4b73ebfbc51288c015049d7d3186be0aaca06d
+    image: ghcr.io/junr03/electricpeak-services/status@sha256:87551b23d981a185dd5684192d3ea177c746db23839bc420858e20bd902cd26d
     container_name: status
     read_only: true
     cap_drop: [ALL]
@@ -99,6 +163,13 @@ services:
     restart: unless-stopped
 
 networks:
+  opendashboards-db:
+    name: opendashboards-db
+    internal: true
   electricpeak:
     name: electricpeak
     external: true
+
+volumes:
+  opendashboards-postgres:
+    name: opendashboards-postgres

@@ -4,6 +4,8 @@
 Raw Backup's web application, Rust collector, photo workflow implementation,
 Substack Digest's Rust service and browser/PDF packaging, and the status page
 collector and static page, with contracts, application tests, and package/image release workflows.
+It also packages OpenDashboards and its production login and credential-storage
+adapters; this repository only configures deployment.
 
 Electricpeak owns NixOS and Home Manager configuration, systemd units, timers,
 device and mount handling, firewall/proxy rules, secret references, Compose
@@ -56,3 +58,43 @@ Serving the page at a public hostname needs a DNS record and an Envoy route and
 certificate in `junr03/electricpeak-sensitive` that forward to `status:8080` on
 the `electricpeak` Docker network. The hostname must not appear in this
 repository.
+
+## OpenDashboards
+
+The utilities Compose source defines OpenDashboards, a network-isolated
+credential initializer, and Postgres 17 on a separate internal Docker network.
+Only the app joins `electricpeak` for Envoy. Neither app nor database publishes a
+host port. The application image comes from `electricpeak-services` and includes
+single-user browser authentication, encrypted connection credentials, and
+versioned database migrations. OpenUI Cloud remains hosted by Thesys; generation,
+model calls and dashboard/chat storage use its API.
+
+`services.opendashboards.enable` defaults to false. Once the API key is
+provisioned, the private deployment sets it to true and sets
+`services.opendashboards.origin` to the external HTTPS origin. This conditionally
+declares `op://electricpeak/nixos/thesys_api_key` in OpNix and starts the app after
+secret materialization, credential initialization and PostgreSQL readiness.
+The generated systemd units preserve Compose dependency ordering; the deployment
+module also waits for database health and supplies the read-only/tmpfs flags that
+the pinned Compose generator omits. The private Envoy route forwards to
+`opendashboards:3000`, with streaming timeouts disabled and existing network
+restrictions unchanged. Production hostnames belong only in the private source.
+
+The first start creates a random login password, database password and encryption
+key in `/var/lib/opendashboards/state`, with mode 0600. Login as `admin`; retrieve
+the password on the server with
+`sudo cat /var/lib/opendashboards/state/admin-password`. No additional 1Password
+fields need provisioning. Keep this a single-user installation.
+
+Back up the `opendashboards-postgres` Docker volume together with the state
+directory. Losing `encryption-key` makes saved connection credentials unreadable.
+Changing `database-password` alone does not update an initialized PostgreSQL role.
+To rotate the Thesys key, update its 1Password field and refresh OpNix; its consumer
+restart integration restarts the app. Rollback preserves persistent state and
+does not reverse migrations or delete hosted artifacts.
+
+The image gate anonymously pulls the pinned image and runs the upstream smoke
+test against an isolated PostgreSQL fixture, including login rejection, app and
+connections rendering, encrypted storage, migration/credential retention after
+restart, and missing-key rejection. It uses a synthetic Thesys key and performs
+no billable generation.

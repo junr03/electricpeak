@@ -13,6 +13,7 @@ let
   tailscaledDependency = lib.optional config.services.tailscale.enable "tailscaled.service";
   consumerServices = acmeConsumerServices
     ++ lib.optional config.services.substackDigest.enable "docker-substack-digest"
+    ++ lib.optional config.services.opendashboards.enable "docker-opendashboards"
     ++ [
     "docker-contact-sync"
     "docker-envoy"
@@ -216,6 +217,14 @@ in
         group = "users";
         mode = "0400";
         services = [ "docker-substack-digest" ];
+      };
+    } // lib.optionalAttrs config.services.opendashboards.enable {
+      thesysApiKey = {
+        reference = "op://electricpeak/nixos/thesys_api_key";
+        owner = "junr03";
+        group = "users";
+        mode = "0400";
+        services = [ "docker-opendashboards" ];
       };
     } // {
       cloudflareDnsEnvironment = {
