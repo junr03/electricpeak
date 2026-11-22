@@ -14,7 +14,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     opnix = {
-      url = "github:brizzbuzz/opnix";
+      # Newer revisions fail the protected-alias preflight test in Nix sandboxes.
+      # Keep the last working revision until upstream fixes path validation.
+      url = "github:brizzbuzz/opnix/0ea3a9e6a94fdd0c444aa7729b98e568a0588222";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gallatin = {
