@@ -90,6 +90,10 @@ in
         '';
       };
 
+      # Bound EFI boot entries so kernel updates cannot exhaust the boot partition.
+      # Older system generations remain available in the Nix store.
+      boot.loader.systemd-boot.configurationLimit = 5;
+
       # Home Manager is wired for this account by the flake even when the
       # private system module is intentionally absent during public checks.
       users.users.junr03.home = "/home/junr03";
