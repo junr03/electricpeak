@@ -32,6 +32,7 @@ let
       unfree = true;
     }
     { name = tree; }
+    { name = vim; }
   ];
 in
 {

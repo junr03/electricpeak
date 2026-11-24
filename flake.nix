@@ -20,7 +20,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gallatin = {
-      url = "github:junr03/gallatin?rev=10f120830b36b1f5543966c01a61f63b626a3bec";
+      url = "github:junr03/gallatin?rev=25e06ce56184a4ca8afaeed571eae21fb3e9ac36";
       flake = false;
     };
     gallatinRunners.url = "github:junr03/gallatin?dir=runners&rev=e6ca46f2fe0c02a396142ffbfd1864f517453b85";
@@ -82,6 +82,7 @@
                     ./users/junr03/default.nix
                     "${inputs.gallatin}/herdr/home-manager.nix"
                     "${inputs.gallatin}/skills"
+                    "${inputs.gallatin}/vim/home-manager.nix"
                   ];
                 };
                 github-actions = ./users/github-actions/default.nix;
