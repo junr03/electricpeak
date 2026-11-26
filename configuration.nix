@@ -55,9 +55,6 @@ in
     # Keep the deployment runner alive after the SSH transport is restarted.
     users.users.github-actions.linger = true;
 
-    # Keep the personal Rex server available while junr03 is logged out.
-    users.users.junr03.linger = true;
-
     # Keep known non-critical failures from blocking the deployment health
     # gate while they are repaired. The verifier still reports these units,
     # but SSH, OpNix, networking, certificates, and all other containers stay
@@ -101,6 +98,9 @@ in
       # private system module is intentionally absent during public checks.
       users.users.junr03.home = "/home/junr03";
       users.users.github-actions.home = "/home/github-actions";
+
+      services.rex.enable = true;
+      users.users.junr03.extraGroups = [ "rex" ];
 
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
