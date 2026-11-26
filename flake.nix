@@ -13,6 +13,7 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rex.url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
     opnix = {
       # Newer revisions fail the protected-alias preflight test in Nix sandboxes.
       # Keep the last working revision until upstream fixes path validation.
@@ -80,6 +81,7 @@
                 junr03 = {
                   imports = [
                     ./users/junr03/default.nix
+                    inputs.rex.homeManagerModules.default
                     "${inputs.gallatin}/herdr/home-manager.nix"
                     "${inputs.gallatin}/skills"
                     "${inputs.gallatin}/vim/home-manager.nix"
