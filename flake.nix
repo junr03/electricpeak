@@ -74,7 +74,6 @@
           };
           modules = [
             ./configuration.nix
-            inputs.rex.nixosModules.default
             (import "${patchedOpnix}/nix/module.nix")
             home-manager.nixosModules.home-manager
             {
@@ -85,6 +84,7 @@
                 junr03 = {
                   imports = [
                     ./users/junr03/default.nix
+                    inputs.rex.homeManagerModules.default
                     "${inputs.gallatin}/herdr/home-manager.nix"
                     "${inputs.gallatin}/skills"
                     "${inputs.gallatin}/vim/home-manager.nix"
