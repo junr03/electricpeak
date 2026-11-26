@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     electricpeak-services = {
-      url = "github:junr03/electricpeak-services/fe44da76cadc05b0098559fcda3830d07959ce15";
+      url = "github:junr03/electricpeak-services/648975a2ce677639a655177414d266aaf2654e45";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gallatin.follows = "gallatin";
     };
