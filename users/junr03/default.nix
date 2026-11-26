@@ -64,5 +64,6 @@ in
     };
   };
 
+  services.rex.enable = true;
   services.ssh-agent.enable = true;
 }
