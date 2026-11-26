@@ -99,6 +99,9 @@ in
       users.users.junr03.home = "/home/junr03";
       users.users.github-actions.home = "/home/github-actions";
 
+      services.rex.enable = true;
+      users.users.junr03.extraGroups = [ "rex" ];
+
       # Provide the conventional interpreter path for upstream scripts that use
       # a /bin/bash shebang.
       system.activationScripts.binbash = {

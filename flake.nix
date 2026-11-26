@@ -13,6 +13,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     opnix = {
       # Newer revisions fail the protected-alias preflight test in Nix sandboxes.
       # Keep the last working revision until upstream fixes path validation.
@@ -70,6 +74,7 @@
           };
           modules = [
             ./configuration.nix
+            inputs.rex.nixosModules.default
             (import "${patchedOpnix}/nix/module.nix")
             home-manager.nixosModules.home-manager
             {
