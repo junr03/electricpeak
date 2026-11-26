@@ -63,6 +63,7 @@ let
         homeassistant-automations
         homeassistant-templates
         homarr
+        opendashboards-private-destinations
         junr03-ssh
         github-actions-ssh
         zerotier-cidr
@@ -98,6 +99,11 @@ let
           resource="homarr-environment.env"
           storage_kind="file"
           suffix=".env"
+          ;;
+        opendashboards-private-destinations)
+          resource="opendashboards-private-destinations.json"
+          storage_kind="file"
+          suffix=".json"
           ;;
         junr03-ssh)
           resource="junr03-authorized-keys.txt"
@@ -219,6 +225,14 @@ in
         services = [ "docker-substack-digest" ];
       };
     } // lib.optionalAttrs config.services.opendashboards.enable {
+      opendashboardsPrivateDestinations = {
+        reference = "op://electricpeak/nixos/opendashboards-private-destinations.json";
+        kind = "file";
+        owner = "junr03";
+        group = "users";
+        mode = "0400";
+        services = [ "docker-opendashboards" ];
+      };
       thesysApiKey = {
         reference = "op://electricpeak/nixos/thesys_api_key";
         owner = "junr03";

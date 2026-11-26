@@ -98,3 +98,29 @@ test against an isolated PostgreSQL fixture, including login rejection, app and
 connections rendering, encrypted storage, migration/credential retention after
 restart, and missing-key rejection. It uses a synthetic Thesys key and performs
 no billable generation.
+
+### OpenDashboards runtime settings
+
+The published OpenDashboards image reads its private-source authorization file
+at startup. Configure `OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE` and the read-only
+mount in `containers/source/utilities/docker-compose.yml`; changing rules needs
+a container restart, without rebuilding the application.
+
+Before enabling or upgrading this service, provision the existing Thesys API key
+and the `opendashboards-private-destinations.json` attachment on the `nixos` item
+in the `electricpeak` 1Password vault. OpNix supplies the attachment through
+`opendashboardsPrivateDestinations`, owned by the app's host user with mode 0400,
+and restarts the consuming container when it changes. Store production rules in
+1Password. `[]` authorizes no private sources; missing or invalid configured
+files prevent startup. The public configuration keeps the service disabled by
+default. Existing persistent authentication/encryption state is retained.
+
+The file is an array of the fork's existing private-destination settings, each
+with `host`, `port` and `addresses` fields. The private deployment instructions
+contain the production configuration to store in 1Password.
+
+Use exact hosts and ports and narrow address bounds for the deployment network.
+The existing guarded connectors still require TLS and reject metadata targets.
+The analytics source remains separate from the application's metadata database.
+Use `onepassword-config-edit opendashboards-private-destinations` for later edits,
+then refresh OpNix with `sudo systemctl restart opnix-secrets.service`.
