@@ -90,7 +90,7 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:b1d6495aa92b1e42e00a020e9ba7a89a219fe8efe7915916893470deef555072";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:0a5d623b516c397687d2b3bc6a3ff11687060ce23036098f87d3345f9b2b7940";
     environment = {
       "APP_ORIGIN" = "https://dashboards.example.invalid";
       "OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE" = "/run/secrets/private-destinations.json";
@@ -182,7 +182,7 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards-init" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:b1d6495aa92b1e42e00a020e9ba7a89a219fe8efe7915916893470deef555072";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:0a5d623b516c397687d2b3bc6a3ff11687060ce23036098f87d3345f9b2b7940";
     volumes = [
       "/var/lib/opendashboards/state:/data:rw"
     ];
@@ -207,7 +207,7 @@
     ];
   };
   virtualisation.oci-containers.containers."rawbackup" = {
-    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:031088a70ac550171638b08020bfa4feeafd13927174ba35fab41710ba78469a";
+    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:0e4d58e203a01ab80603730ae6d5174890269a8f0386ca1e58d9d7dfa244db38";
     volumes = [
       "/var/lib/rawbackup:/data:ro"
       "/var/lib/rawbackup/reconcile:/reconcile:rw"
@@ -233,7 +233,7 @@
     ];
   };
   virtualisation.oci-containers.containers."status" = {
-    image = "ghcr.io/junr03/electricpeak-services/status@sha256:c9a4c2b16a745eae2f66f55f25985254c1d27fbefd6b40d159fb382654600100";
+    image = "ghcr.io/junr03/electricpeak-services/status@sha256:af3727f99b8370fe47386c4f7657c868e1d3e3dca38ec3c5c6caf3ad8d5bb1cf";
     volumes = [
       "/var/lib/electricpeak-status:/srv/status-data:ro"
     ];
@@ -260,7 +260,7 @@
     ];
   };
   virtualisation.oci-containers.containers."substack-digest" = {
-    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:4c76fcfc0906eebcf93ee7ff064f0ea6352bb507752a90cdfb7ccde7fcfc3786";
+    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:61936b3d68d7e41e2464248d0366d59fe4272d1d87085d94f26004d1e1d5f4c9";
     environment = {
       "RMAPI_CONFIG_DIR" = "/data/rmapi";
     };
