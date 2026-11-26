@@ -8,7 +8,7 @@ let
 in
 {
   options.services.opendashboards = {
-    enable = lib.mkEnableOption "OpenDashboards (requires a provisioned Thesys API key)";
+    enable = lib.mkEnableOption "OpenDashboards (requires a provisioned Thesys API key and private-destinations JSON attachment)";
     origin = lib.mkOption {
       type = lib.types.strMatching "https://[^/]+";
       default = "https://dashboards.example.invalid";

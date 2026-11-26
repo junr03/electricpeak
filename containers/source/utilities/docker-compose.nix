@@ -90,11 +90,13 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:618f4da2c48dc16f0d843c4676026e9c853f3035f04a7a1ad03e52e6165fca0b";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:0a5d623b516c397687d2b3bc6a3ff11687060ce23036098f87d3345f9b2b7940";
     environment = {
       "APP_ORIGIN" = "https://dashboards.example.invalid";
+      "OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE" = "/run/secrets/private-destinations.json";
     };
     volumes = [
+      "/run/onepassword-secrets/opendashboardsPrivateDestinations:/run/secrets/private-destinations.json:ro"
       "/run/onepassword-secrets/thesysApiKey:/run/secrets/thesys-api-key:ro"
       "/var/lib/opendashboards/state:/data:ro"
     ];
@@ -180,7 +182,7 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards-init" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:618f4da2c48dc16f0d843c4676026e9c853f3035f04a7a1ad03e52e6165fca0b";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:0a5d623b516c397687d2b3bc6a3ff11687060ce23036098f87d3345f9b2b7940";
     volumes = [
       "/var/lib/opendashboards/state:/data:rw"
     ];
@@ -205,7 +207,7 @@
     ];
   };
   virtualisation.oci-containers.containers."rawbackup" = {
-    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:3b349d321d4c7238e056ce791999dc2d6a88e288fddf168d4b6c12cf2e096963";
+    image = "ghcr.io/junr03/electricpeak-services/rawbackup@sha256:0e4d58e203a01ab80603730ae6d5174890269a8f0386ca1e58d9d7dfa244db38";
     volumes = [
       "/var/lib/rawbackup:/data:ro"
       "/var/lib/rawbackup/reconcile:/reconcile:rw"
@@ -231,7 +233,7 @@
     ];
   };
   virtualisation.oci-containers.containers."status" = {
-    image = "ghcr.io/junr03/electricpeak-services/status@sha256:fd10124d7859ab588ca67f1f86a370be6ee08726ab6291c1407e669c3aa53bbe";
+    image = "ghcr.io/junr03/electricpeak-services/status@sha256:af3727f99b8370fe47386c4f7657c868e1d3e3dca38ec3c5c6caf3ad8d5bb1cf";
     volumes = [
       "/var/lib/electricpeak-status:/srv/status-data:ro"
     ];
@@ -258,7 +260,7 @@
     ];
   };
   virtualisation.oci-containers.containers."substack-digest" = {
-    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:23835b274a573f5b9b261a85dd24f3607dcab79e2fec098e9aa1cb58571433ff";
+    image = "ghcr.io/junr03/electricpeak-services/substack-digest@sha256:61936b3d68d7e41e2464248d0366d59fe4272d1d87085d94f26004d1e1d5f4c9";
     environment = {
       "RMAPI_CONFIG_DIR" = "/data/rmapi";
     };
