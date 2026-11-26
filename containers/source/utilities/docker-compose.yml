@@ -2,7 +2,7 @@
 services:
   opendashboards:
     # Production adapters and packaging are maintained in electricpeak-services.
-    image: &opendashboards-image ghcr.io/junr03/electricpeak-services/opendashboards@sha256:0a5d623b516c397687d2b3bc6a3ff11687060ce23036098f87d3345f9b2b7940
+    image: &opendashboards-image ghcr.io/junr03/electricpeak-services/opendashboards@sha256:85f4d4a0ac59e404592212b6f2654bbeb747bf2634d50aef63b9dd41c3c0bf86
     container_name: opendashboards
     user: "1000:100"
     init: true
@@ -15,6 +15,7 @@ services:
     environment:
       # The private Nix module overrides this with the external HTTPS origin.
       - APP_ORIGIN=https://dashboards.example.invalid
+      - OPENDASHBOARDS_MODEL=google/gemini-3.6-flash-free
       - OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE=/run/secrets/private-destinations.json
     volumes:
       - /var/lib/opendashboards/state:/data:ro
