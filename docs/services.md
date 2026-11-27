@@ -69,6 +69,13 @@ single-user browser authentication, encrypted connection credentials, and
 versioned database migrations. OpenUI Cloud remains hosted by Thesys; generation,
 model calls and dashboard/chat storage use its API.
 
+The application container sets `OPENDASHBOARDS_MODEL=google/gemini-3.6-flash-free`
+for both the chat agent and dashboard generation, using the existing Thesys API
+key. Change that environment value through the normal reviewed deployment process
+to select another Gateway model without rebuilding the image. This free route
+still consumes Gateway API calls, has usage limits, and may use request data for
+training; see [Gateway models](https://www.openui.com/cloud/gateway/models).
+
 `services.opendashboards.enable` defaults to false. Once the API key is
 provisioned, the private deployment sets it to true and sets
 `services.opendashboards.origin` to the external HTTPS origin. This conditionally
