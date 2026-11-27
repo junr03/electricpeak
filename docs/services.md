@@ -28,7 +28,10 @@ There is no application source bind mount from `/etc/nixos`.
    `bash .github/scripts/verify-service-images.sh` (Docker and Poppler required),
    and the applicable NixOS build.
 5. Open a PR. The existing Compose generation job commits generated Nix modules;
-   do not hand-edit them. Deployment occurs only after merging to main.
+   do not hand-edit them. Wait for that generated commit and its follow-up checks
+   to pass before merging. An earlier green PR run validates regenerated files
+   but does not guarantee they have been committed; main rejects stale generated
+   modules before deployment. Deployment occurs only after merging to main.
 
 The integration gate actually pulls images with an empty Docker credential
 configuration, checks their source/revision labels against the locked input,
