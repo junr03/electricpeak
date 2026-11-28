@@ -90,9 +90,12 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:e8344dd49baa599a629eb204939b9ae831fdf444533d7ee1b30fca096bbcf374";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:3c02266a2783719c97bf33e7d761c93cf95580905d4858ff1a790e74fa781896";
     environment = {
       "APP_ORIGIN" = "https://dashboards.example.invalid";
+      "LLM_BASE_URL" = "http://opendashboards-ollama:11434/v1";
+      "LLM_MODEL" = "qwen3:8b";
+      "LLM_WAIT_FOR_MODELS" = "true";
       "OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE" = "/run/secrets/private-destinations.json";
     };
     volumes = [
@@ -102,6 +105,7 @@
     dependsOn = [
       "opendashboards-db"
       "opendashboards-init"
+      "opendashboards-ollama"
     ];
     user = "1000:100";
     log-driver = "journald";
@@ -184,11 +188,16 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards-init" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:e8344dd49baa599a629eb204939b9ae831fdf444533d7ee1b30fca096bbcf374";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:3c02266a2783719c97bf33e7d761c93cf95580905d4858ff1a790e74fa781896";
     volumes = [
       "/var/lib/opendashboards/state:/data:rw"
     ];
     cmd = [ "init" ];
+    labels = {
+      "compose2nix.systemd.service.RemainAfterExit" = "true";
+      "compose2nix.systemd.service.TimeoutStartSec" = "5min";
+      "compose2nix.systemd.service.Type" = "oneshot";
+    };
     user = "1000:100";
     log-driver = "journald";
     extraOptions = [
@@ -199,7 +208,10 @@
   };
   systemd.services."docker-opendashboards-init" = {
     serviceConfig = {
+      RemainAfterExit = lib.mkOverride 90 true;
       Restart = lib.mkOverride 90 "no";
+      TimeoutStartSec = lib.mkOverride 90 "5min";
+      Type = lib.mkOverride 90 "oneshot";
     };
     partOf = [
       "docker-compose-electricpeak-root.target"
@@ -209,10 +221,11 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards-ollama" = {
-    image = "ollama/ollama@sha256:1cabd20e1762a7a8444bf4a7110b346d923cd77ab6c97c984434140638c913ec";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:99d9ecf5e039b736e0a13f650d215b969de3b11ee3eed672249029772f38c1c1";
     environment = {
       "OLLAMA_CONTEXT_LENGTH" = "32768";
       "OLLAMA_HOST" = "0.0.0.0:11434";
+      "OLLAMA_INITIAL_MODELS" = "qwen3:8b";
       "OLLAMA_NUM_PARALLEL" = "1";
     };
     volumes = [
@@ -221,9 +234,10 @@
     log-driver = "journald";
     extraOptions = [
       "--cap-drop=ALL"
-      "--health-cmd=[\"ollama\", \"list\"]"
+      "--health-cmd=test -f /tmp/ollama-ready && ollama list >/dev/null"
       "--health-interval=5s"
       "--health-retries=20"
+      "--health-start-period=1h0m0s"
       "--health-timeout=5s"
       "--network-alias=opendashboards-ollama"
       "--network=opendashboards-inference"
