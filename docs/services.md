@@ -75,19 +75,25 @@ Model requests go directly to the configured OpenAI-compatible server. Dashboard
 programs/versions and chat history are stored in app PostgreSQL; generated scripts
 execute in QuickJS inside the app container. Thesys/OpenUI Cloud is no longer used.
 
-`services.opendashboards.enable` defaults to false. Before enabling it, configure
-`origin` and `inference.baseUrl` / `inference.model` in the private deployment.
-Optional `inference.dashboardModel` selects a different model on the same endpoint.
-The URL must be reachable from inside the container.
+`services.opendashboards.enable` defaults to false. The private Nix configuration
+sets the external `origin`. Model and inference settings live in
+`containers/source/utilities/docker-compose.yml`: `LLM_BASE_URL` selects the endpoint,
+and a YAML anchor shares `qwen3:8b` between `LLM_MODEL` and `OLLAMA_INITIAL_MODELS`.
+`OLLAMA_CONTEXT_LENGTH=32768` and `OLLAMA_NUM_PARALLEL=1` configure serving.
 
-With `inference.ollama.enable`, a digest-pinned Ollama container runs on the dedicated
-`opendashboards-inference` network with no host ports, no Envoy route and no access
-to the app or transactions database networks. Its `opendashboards-models` volume
-persists weights. Startup checks Ollama readiness and provisions missing configured
-models before starting the app; cached models are not refreshed automatically.
-The initial download can take time. `inference.ollama.contextLength` defaults to
-32768 tokens and parallel inference is limited to one request. The container uses
-CPU inference; no GPU devices or drivers are configured by this change.
+The digest-pinned inference image wraps the official Ollama CLI. Its entrypoint
+starts Ollama, waits for its API, and downloads only missing configured models.
+Health becomes ready after provisioning. Failed downloads stop the container.
+The app entrypoint waits for PostgreSQL and its selected models before migrations
+and startup. These behaviors work with Compose and NixOS; no host model-download
+unit or Nix inference options remain.
+
+Ollama uses the dedicated `opendashboards-inference` network with no host ports,
+Envoy route or access to either database network. Its `opendashboards-models` volume
+persists weights. The initial download can take time. Inference uses the CPU;
+no GPU devices or drivers are configured. Nix handles host state permissions,
+service enablement, the private external origin, and compatibility flags omitted
+by compose2nix; container settings and readiness belong to Compose and the images.
 
 Configure and validate model serving capacity for the host; the image fixture does
 not establish a real model's quality, memory needs or throughput.

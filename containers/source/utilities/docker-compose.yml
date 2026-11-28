@@ -2,7 +2,7 @@
 services:
   opendashboards:
     # Owned runtime packaging is maintained in electricpeak-services.
-    image: &opendashboards-image ghcr.io/junr03/electricpeak-services/opendashboards@sha256:e8344dd49baa599a629eb204939b9ae831fdf444533d7ee1b30fca096bbcf374
+    image: &opendashboards-image ghcr.io/junr03/electricpeak-services/opendashboards@sha256:3c02266a2783719c97bf33e7d761c93cf95580905d4858ff1a790e74fa781896
     container_name: opendashboards
     user: "1000:100"
     init: true
@@ -13,9 +13,12 @@ services:
       - /tmp:mode=1777
       - /app/.next/cache:uid=1000,gid=100
     environment:
-      # The private Nix module overrides this with the external HTTPS origin.
-      - APP_ORIGIN=https://dashboards.example.invalid
-      - OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE=/run/secrets/private-destinations.json
+      # The private deployment supplies the external HTTPS origin.
+      APP_ORIGIN: https://dashboards.example.invalid
+      OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE: /run/secrets/private-destinations.json
+      LLM_BASE_URL: http://opendashboards-ollama:11434/v1
+      LLM_MODEL: &opendashboards-model qwen3:8b
+      LLM_WAIT_FOR_MODELS: "true"
     volumes:
       - /var/lib/opendashboards/state:/data:ro
       - /run/onepassword-secrets/opendashboardsPrivateDestinations:/run/secrets/private-destinations.json:ro
@@ -23,6 +26,8 @@ services:
       opendashboards-init:
         condition: service_completed_successfully
       opendashboards-db:
+        condition: service_healthy
+      opendashboards-ollama:
         condition: service_healthy
     networks:
       - electricpeak
@@ -35,6 +40,10 @@ services:
     container_name: opendashboards-init
     user: "1000:100"
     command: ["init"]
+    labels:
+      - "compose2nix.systemd.service.Type=oneshot"
+      - "compose2nix.systemd.service.RemainAfterExit=true"
+      - "compose2nix.systemd.service.TimeoutStartSec=5min"
     network_mode: none
     read_only: true
     cap_drop: [ALL]
@@ -67,20 +76,23 @@ services:
     restart: unless-stopped
 
   opendashboards-ollama:
-    image: ollama/ollama@sha256:1cabd20e1762a7a8444bf4a7110b346d923cd77ab6c97c984434140638c913ec
+    # Official Ollama with container-owned model provisioning (ollama-sha variant).
+    image: ghcr.io/junr03/electricpeak-services/opendashboards@sha256:99d9ecf5e039b736e0a13f650d215b969de3b11ee3eed672249029772f38c1c1
     container_name: opendashboards-ollama
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp:mode=1777]
     environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-      - OLLAMA_CONTEXT_LENGTH=32768
-      - OLLAMA_NUM_PARALLEL=1
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_CONTEXT_LENGTH: "32768"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_INITIAL_MODELS: *opendashboards-model
     volumes:
       - opendashboards-models:/root/.ollama
     healthcheck:
-      test: ["CMD", "ollama", "list"]
+      test: ["CMD-SHELL", "test -f /tmp/ollama-ready && ollama list >/dev/null"]
+      start_period: 1h
       interval: 5s
       timeout: 5s
       retries: 20

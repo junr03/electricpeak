@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     electricpeak-services = {
-      url = "github:junr03/electricpeak-services/99b4f300fc222d326fa277aace2de09cfdebede7";
+      url = "github:junr03/electricpeak-services/3b9e42c9a65ca4e32ed999f5811ad0660412cb77";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gallatin.follows = "gallatin";
     };
@@ -128,11 +128,6 @@
             # optional workflows disabled. This check is never activated.
             services.substackDigest.enable = true;
             services.opendashboards.enable = true;
-            services.opendashboards.inference = {
-              baseUrl = "http://inference.example.invalid:11434/v1";
-              model = "fixture-model";
-              ollama.enable = true;
-            };
             services.photoWorkflow = {
               enable = true;
               external.enable = true;
