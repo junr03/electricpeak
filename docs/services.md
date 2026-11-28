@@ -64,50 +64,62 @@ repository.
 
 ## OpenDashboards
 
-The utilities Compose source defines OpenDashboards, a network-isolated
-credential initializer, and Postgres 17 on a separate internal Docker network.
-Only the app joins `electricpeak` for Envoy. Neither app nor database publishes a
-host port. The application image comes from `electricpeak-services` and includes
-single-user browser authentication, encrypted connection credentials, and
-versioned database migrations. OpenUI Cloud remains hosted by Thesys; generation,
-model calls and dashboard/chat storage use its API.
+The utilities Compose source runs the owned OpenDashboards runtime, a network-isolated
+credential initializer, and PostgreSQL 17 for application state on an internal network.
+The transactions/analytics PostgreSQL container remains separate, with its own volume
+and read-only dashboard account. Only the app joins `electricpeak` for Envoy. Neither
+app nor database publishes a host port.
 
-The application container sets `OPENDASHBOARDS_MODEL=google/gemini-3.6-flash-free`
-for both the chat agent and dashboard generation, using the existing Thesys API
-key. Change that environment value through the normal reviewed deployment process
-to select another Gateway model without rebuilding the image. This free route
-still consumes Gateway API calls, has usage limits, and may use request data for
-training; see [Gateway models](https://www.openui.com/cloud/gateway/models).
+The pinned `electricpeak-services` image packages the merged OpenDashboards fork.
+Model requests go directly to the configured OpenAI-compatible server. Dashboard
+programs/versions and chat history are stored in app PostgreSQL; generated scripts
+execute in QuickJS inside the app container. Thesys/OpenUI Cloud is no longer used.
 
-`services.opendashboards.enable` defaults to false. Once the API key is
-provisioned, the private deployment sets it to true and sets
-`services.opendashboards.origin` to the external HTTPS origin. This conditionally
-declares `op://electricpeak/nixos/thesys_api_key` in OpNix and starts the app after
-secret materialization, credential initialization and PostgreSQL readiness.
-The generated systemd units preserve Compose dependency ordering; the deployment
-module also waits for database health and supplies the read-only/tmpfs flags that
-the pinned Compose generator omits. The private Envoy route forwards to
-`opendashboards:3000`, with streaming timeouts disabled and existing network
-restrictions unchanged. Production hostnames belong only in the private source.
+`services.opendashboards.enable` defaults to false. The private Nix configuration
+sets the external `origin`. Model and inference settings live in
+`containers/source/utilities/docker-compose.yml`: `LLM_BASE_URL` selects the endpoint,
+and a YAML anchor shares `qwen3:8b` between `LLM_MODEL` and `OLLAMA_INITIAL_MODELS`.
+`OLLAMA_CONTEXT_LENGTH=32768` and `OLLAMA_NUM_PARALLEL=1` configure serving.
 
-The first start creates a random login password, database password and encryption
-key in `/var/lib/opendashboards/state`, with mode 0600. Login as `admin`; retrieve
-the password on the server with
-`sudo cat /var/lib/opendashboards/state/admin-password`. No additional 1Password
-fields need provisioning. Keep this a single-user installation.
+The digest-pinned inference image wraps the official Ollama CLI. Its entrypoint
+starts Ollama, waits for its API, and downloads only missing configured models.
+Health becomes ready after provisioning. Failed downloads stop the container.
+The app entrypoint waits for PostgreSQL and its selected models before migrations
+and startup. These behaviors work with Compose and NixOS; no host model-download
+unit or Nix inference options remain.
 
-Back up the `opendashboards-postgres` Docker volume together with the state
-directory. Losing `encryption-key` makes saved connection credentials unreadable.
-Changing `database-password` alone does not update an initialized PostgreSQL role.
-To rotate the Thesys key, update its 1Password field and refresh OpNix; its consumer
-restart integration restarts the app. Rollback preserves persistent state and
-does not reverse migrations or delete hosted artifacts.
+Ollama uses the dedicated `opendashboards-inference` network with no host ports,
+Envoy route or access to either database network. Its `opendashboards-models` volume
+persists weights. The initial download can take time. Inference uses the CPU;
+no GPU devices or drivers are configured. Nix handles host state permissions,
+service enablement, the private external origin, and compatibility flags omitted
+by compose2nix; container settings and readiness belong to Compose and the images.
 
-The image gate anonymously pulls the pinned image and runs the upstream smoke
-test against an isolated PostgreSQL fixture, including login rejection, app and
-connections rendering, encrypted storage, migration/credential retention after
-restart, and missing-key rejection. It uses a synthetic Thesys key and performs
-no billable generation.
+Configure and validate model serving capacity for the host; the image fixture does
+not establish a real model's quality, memory needs or throughput.
+
+The private Envoy route continues forwarding to `opendashboards:3000`, preserving
+streaming timeouts and network restrictions. Startup waits for credentials and
+PostgreSQL readiness, applies additive migrations, and uses a read-only root filesystem
+with the existing tmpfs mounts. The Thesys secret mount and OpNix declaration are removed.
+
+Init retains `database-password`, `admin-password` and `encryption-key` in
+`/var/lib/opendashboards/state`, adding only a missing `session-secret`. Files have
+mode 0600. Sign in at `/login` using the existing admin password (no username field):
+`sudo cat /var/lib/opendashboards/state/admin-password`. Signed sessions expire after
+12 hours. Existing data ownership and legacy encrypted credentials are preserved.
+
+Back up `opendashboards-postgres` and the state directory, with a separate encryption-key
+backup. Changing the database-password file does not rotate an existing database role.
+An older image cannot read newly encrypted credentials, dashboard programs or chat
+history. Legacy Cloud dashboards/history require explicit archive/import using the
+fork's migration guide; this rollout does not automatically migrate hosted content.
+
+The image gate anonymously pulls the exact pinned digest and runs disposable database
+checks for password login, session forgery rejection, app pages, additive migrations,
+restart retention, invalid private rules and absent inference configuration. Images
+release independently from the locked Nix host packages; each carries its source
+repository and commit labels and runs its service-specific smoke check.
 
 ### OpenDashboards runtime settings
 
@@ -116,8 +128,7 @@ at startup. Configure `OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE` and the read-on
 mount in `containers/source/utilities/docker-compose.yml`; changing rules needs
 a container restart, without rebuilding the application.
 
-Before enabling or upgrading this service, provision the existing Thesys API key
-and the `opendashboards-private-destinations.json` attachment on the `nixos` item
+Before enabling or upgrading this service, provision the `opendashboards-private-destinations.json` attachment on the `nixos` item
 in the `electricpeak` 1Password vault. OpNix supplies the attachment through
 `opendashboardsPrivateDestinations`, owned by the app's host user with mode 0400,
 and restarts the consuming container when it changes. Store production rules in

@@ -233,13 +233,6 @@ in
         mode = "0400";
         services = [ "docker-opendashboards" ];
       };
-      thesysApiKey = {
-        reference = "op://electricpeak/nixos/thesys_api_key";
-        owner = "junr03";
-        group = "users";
-        mode = "0400";
-        services = [ "docker-opendashboards" ];
-      };
     } // {
       cloudflareDnsEnvironment = {
         reference = "op://electricpeak/nixos/cloudflare-dns-environment.env";

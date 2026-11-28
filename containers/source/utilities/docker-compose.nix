@@ -90,20 +90,22 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:ba7351df25c2d5628cab27707a27d9202778ba865e45f6b9026c21040858c5c0";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:3c02266a2783719c97bf33e7d761c93cf95580905d4858ff1a790e74fa781896";
     environment = {
       "APP_ORIGIN" = "https://dashboards.example.invalid";
-      "OPENDASHBOARDS_MODEL" = "google/gemini-3.6-flash-free";
+      "LLM_BASE_URL" = "http://opendashboards-ollama:11434/v1";
+      "LLM_MODEL" = "qwen3:8b";
+      "LLM_WAIT_FOR_MODELS" = "true";
       "OPENDASHBOARDS_PRIVATE_DESTINATIONS_FILE" = "/run/secrets/private-destinations.json";
     };
     volumes = [
       "/run/onepassword-secrets/opendashboardsPrivateDestinations:/run/secrets/private-destinations.json:ro"
-      "/run/onepassword-secrets/thesysApiKey:/run/secrets/thesys-api-key:ro"
       "/var/lib/opendashboards/state:/data:ro"
     ];
     dependsOn = [
       "opendashboards-db"
       "opendashboards-init"
+      "opendashboards-ollama"
     ];
     user = "1000:100";
     log-driver = "journald";
@@ -112,6 +114,7 @@
       "--network-alias=opendashboards"
       "--network=electricpeak"
       "--network=opendashboards-db"
+      "--network=opendashboards-inference"
       "--security-opt=no-new-privileges:true"
     ];
   };
@@ -124,9 +127,11 @@
     };
     after = [
       "docker-network-opendashboards-db.service"
+      "docker-network-opendashboards-inference.service"
     ];
     requires = [
       "docker-network-opendashboards-db.service"
+      "docker-network-opendashboards-inference.service"
     ];
     partOf = [
       "docker-compose-electricpeak-root.target"
@@ -183,11 +188,16 @@
     ];
   };
   virtualisation.oci-containers.containers."opendashboards-init" = {
-    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:ba7351df25c2d5628cab27707a27d9202778ba865e45f6b9026c21040858c5c0";
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:3c02266a2783719c97bf33e7d761c93cf95580905d4858ff1a790e74fa781896";
     volumes = [
       "/var/lib/opendashboards/state:/data:rw"
     ];
     cmd = [ "init" ];
+    labels = {
+      "compose2nix.systemd.service.RemainAfterExit" = "true";
+      "compose2nix.systemd.service.TimeoutStartSec" = "5min";
+      "compose2nix.systemd.service.Type" = "oneshot";
+    };
     user = "1000:100";
     log-driver = "journald";
     extraOptions = [
@@ -198,8 +208,57 @@
   };
   systemd.services."docker-opendashboards-init" = {
     serviceConfig = {
+      RemainAfterExit = lib.mkOverride 90 true;
       Restart = lib.mkOverride 90 "no";
+      TimeoutStartSec = lib.mkOverride 90 "5min";
+      Type = lib.mkOverride 90 "oneshot";
     };
+    partOf = [
+      "docker-compose-electricpeak-root.target"
+    ];
+    wantedBy = [
+      "docker-compose-electricpeak-root.target"
+    ];
+  };
+  virtualisation.oci-containers.containers."opendashboards-ollama" = {
+    image = "ghcr.io/junr03/electricpeak-services/opendashboards@sha256:99d9ecf5e039b736e0a13f650d215b969de3b11ee3eed672249029772f38c1c1";
+    environment = {
+      "OLLAMA_CONTEXT_LENGTH" = "32768";
+      "OLLAMA_HOST" = "0.0.0.0:11434";
+      "OLLAMA_INITIAL_MODELS" = "qwen3:8b";
+      "OLLAMA_NUM_PARALLEL" = "1";
+    };
+    volumes = [
+      "opendashboards-models:/root/.ollama:rw"
+    ];
+    log-driver = "journald";
+    extraOptions = [
+      "--cap-drop=ALL"
+      "--health-cmd=test -f /tmp/ollama-ready && ollama list >/dev/null"
+      "--health-interval=5s"
+      "--health-retries=20"
+      "--health-start-period=1h0m0s"
+      "--health-timeout=5s"
+      "--network-alias=opendashboards-ollama"
+      "--network=opendashboards-inference"
+      "--security-opt=no-new-privileges:true"
+    ];
+  };
+  systemd.services."docker-opendashboards-ollama" = {
+    serviceConfig = {
+      Restart = lib.mkOverride 90 "always";
+      RestartMaxDelaySec = lib.mkOverride 90 "1m";
+      RestartSec = lib.mkOverride 90 "100ms";
+      RestartSteps = lib.mkOverride 90 9;
+    };
+    after = [
+      "docker-network-opendashboards-inference.service"
+      "docker-volume-opendashboards-models.service"
+    ];
+    requires = [
+      "docker-network-opendashboards-inference.service"
+      "docker-volume-opendashboards-models.service"
+    ];
     partOf = [
       "docker-compose-electricpeak-root.target"
     ];
@@ -305,8 +364,33 @@
     partOf = [ "docker-compose-electricpeak-root.target" ];
     wantedBy = [ "docker-compose-electricpeak-root.target" ];
   };
+  systemd.services."docker-network-opendashboards-inference" = {
+    path = [ pkgs.docker ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStop = "docker network rm -f opendashboards-inference";
+    };
+    script = ''
+      docker network inspect opendashboards-inference || docker network create opendashboards-inference
+    '';
+    partOf = [ "docker-compose-electricpeak-root.target" ];
+    wantedBy = [ "docker-compose-electricpeak-root.target" ];
+  };
 
   # Volumes
+  systemd.services."docker-volume-opendashboards-models" = {
+    path = [ pkgs.docker ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      docker volume inspect opendashboards-models || docker volume create opendashboards-models
+    '';
+    partOf = [ "docker-compose-electricpeak-root.target" ];
+    wantedBy = [ "docker-compose-electricpeak-root.target" ];
+  };
   systemd.services."docker-volume-opendashboards-postgres" = {
     path = [ pkgs.docker ];
     serviceConfig = {
