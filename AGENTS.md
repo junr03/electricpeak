@@ -19,6 +19,12 @@ with the existing Nix modules.
 
 ## Container definitions
 
+- For custom services and packaged applications, make `docker-compose.yml` the runtime
+  configuration surface: prefer environment variables, using command arguments and
+  mounted config/secret files where needed.
+- Keep startup validation, readiness checks and initialization inside the container.
+- Limit Nix to host integration and deploying Compose; avoid duplicate application
+  settings in Nix options.
 - Edit the source Docker Compose YAML files under
   `containers/source/<group>/docker-compose.yml`.
 - Do not hand-edit generated `docker-compose.nix` files. Run
